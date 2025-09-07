@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Kannada Tech Feed',
+  title: 'Youtube Tech Feed',
   description: 'Your daily digest of the latest tech videos.',
 };
 
