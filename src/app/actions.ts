@@ -8,7 +8,7 @@ const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' | 'username' } | null => {
   try {
     const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
+    const pathname = decodeURIComponent(urlObj.pathname);
 
     // Matches /channel/UC...
     const channelIdMatch = pathname.match(/\/channel\/(UC[\w-]{24})/);
@@ -28,9 +28,9 @@ const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' 
         return { id: userOrCNameMatch[1], type: 'username' };
     }
     
-    // Matches /channelname (less specific, last resort)
+    // Matches /channelname (less specific, last resort for things like /beebomco)
     const customNameMatch = pathname.match(/^\/([\w.-]+)$/);
-    if (customNameMatch?.[1]) {
+    if (customNameMatch?.[1] && !customNameMatch[1].startsWith('@')) {
         return { id: customNameMatch[1], type: 'username' };
     }
 
@@ -71,7 +71,7 @@ export async function fetchYouTubeVideoData(
 
   const identifier = getChannelIdentifier(channelUrl);
   if (!identifier) {
-    return { data: null, error: 'Invalid YouTube channel URL format. Please provide a full channel URL.', message: null };
+    return { data: null, error: 'Invalid or unsupported YouTube channel URL format.', message: null };
   }
 
   try {
