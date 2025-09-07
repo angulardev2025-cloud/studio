@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { Copy, Download, Loader2, Youtube } from 'lucide-react';
+import { Copy, Download, Loader2, Youtube, AlertCircle } from 'lucide-react';
 
 import { fetchYouTubeVideoData } from '@/app/actions';
 import type { FetcherState } from '@/lib/types';
@@ -87,6 +87,16 @@ function Results({ state }: { state: FetcherState }) {
       </div>
     );
   }
+  
+  if (state.error) {
+    return (
+      <Alert variant="destructive" className="mt-8">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>An Error Occurred</AlertTitle>
+        <AlertDescription>{state.error}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (!state.data) return null;
 
@@ -150,13 +160,7 @@ export default function YoutubeFetcher() {
   }, []);
 
   useEffect(() => {
-    if (state.error) {
-      toast({
-        variant: 'destructive',
-        title: 'An error occurred',
-        description: state.error,
-      });
-    }
+    // We show errors in the Results component now, but we can still show a toast for success messages.
     if (state.message) {
       toast({
         title: 'Success',
@@ -197,7 +201,7 @@ export default function YoutubeFetcher() {
                 name="channelUrl"
                 type="url"
                 placeholder="https://www.youtube.com/@techinkannada360"
-                defaultValue="https://www.youtube.com/@techinkannada360"
+                defaultValue="https://www.youtube.com/channel/UCPMDhcBogBPsrGQWf5qnArg"
                 required
                 className="mt-1"
               />
