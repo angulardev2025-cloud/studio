@@ -240,6 +240,8 @@ export default function YoutubeFeed() {
   const hasMore = visibleCount < (filteredVideos?.length || 0);
   const totalChannels = channelUrls.length;
 
+  const videosForCurrentView = viewMode === 'grid' ? visibleVideos : filteredVideos;
+
   return (
     <>
       <div className="mb-6 flex flex-col gap-4">
@@ -359,18 +361,18 @@ export default function YoutubeFeed() {
          </Alert>
       )}
       
-      {visibleVideos && visibleVideos.length > 0 && (
+      {videosForCurrentView && videosForCurrentView.length > 0 && (
         <>
           <JsonViewer data={filteredVideos} />
           {viewMode === 'grid' ? (
             <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visibleVideos.map((video) => (
+              {videosForCurrentView.map((video) => (
                 <VideoCard key={video.id} video={video} />
               ))}
             </div>
           ) : (
              <div className="mt-8">
-                <VideoDeckCard videos={visibleVideos} />
+                <VideoDeckCard videos={videosForCurrentView} />
              </div>
           )}
 
