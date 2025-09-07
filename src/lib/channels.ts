@@ -1,6 +1,7 @@
 // To add, edit, or remove a channel, just update the list below.
 // The app will automatically fetch the latest videos from these channels.
 export const channelUrls = [
+  'https://www.youtube.com/@techinkannada360',
   'https://youtube.com/@ganeshkaranth',
   'https://youtube.com/@rajshamani',
   'https://youtube.com/@trakintech',
