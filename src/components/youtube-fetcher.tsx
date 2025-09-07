@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useState, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Copy, Download, Loader2, Youtube } from 'lucide-react';
 
 import { fetchYouTubeVideoData } from '@/app/actions';
@@ -142,7 +142,7 @@ function Results({ state }: { state: FetcherState }) {
 
 
 export default function YoutubeFetcher() {
-  const [state, formAction] = useFormState(fetchYouTubeVideoData, initialState);
+  const [state, formAction] = useActionState(fetchYouTubeVideoData, initialState);
   const { toast } = useToast();
 
   useEffect(() => {
