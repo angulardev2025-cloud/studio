@@ -16,8 +16,8 @@ const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' 
       return { id: channelIdMatch[1], type: 'id' };
     }
 
-    // Matches /@handle
-    const handleMatch = pathname.match(/\/@([\w.-]+)/);
+    // Matches /@handle or /%40handle
+    const handleMatch = pathname.match(/\/@([\w.-]+)/) || pathname.match(/\/%40([\w.-]+)/);
     if (handleMatch?.[1]) {
       return { id: handleMatch[1], type: 'handle' };
     }
@@ -81,30 +81,39 @@ export async function fetchYouTubeVideoData(
     // Step 1: Resolve identifier to channel ID
     if (identifier.type === 'id') {
       channelId = identifier.id;
-    } else if (identifier.type === 'handle') {
-      const searchData = await fetchApi('search', {
-        part: 'snippet',
-        q: `@${identifier.id}`,
-        type: 'channel',
-        key: apiKey,
-      });
-      if (!searchData.items || searchData.items.length === 0) {
-        return { data: null, error: `Could not find a channel with handle @${identifier.id}.`, message: null };
-      }
-      channelId = searchData.items[0].id.channelId;
-      channelTitle = searchData.items[0].snippet.title;
-    } else if (identifier.type === 'username') {
-      const channelData = await fetchApi('channels', {
-          part: 'id,snippet',
-          forUsername: identifier.id,
+    } else { // This handles 'handle' and 'username' types
+      const searchParams: { [key: string]: string } = {
+        part: 'id,snippet',
+        key: apiKey
+      };
+
+      if (identifier.type === 'handle') {
+        // The 'search' endpoint is more reliable for handles.
+        const searchData = await fetchApi('search', {
+          part: 'snippet',
+          q: `@${identifier.id}`,
+          type: 'channel',
           key: apiKey,
-      });
-      if (!channelData.items || channelData.items.length === 0) {
-          return { data: null, error: `Could not find a channel with username ${identifier.id}.`, message: null };
+        });
+        if (!searchData.items || searchData.items.length === 0) {
+          return { data: null, error: `Could not find a channel with handle @${identifier.id}.`, message: null };
+        }
+        channelId = searchData.items[0].id.channelId;
+        channelTitle = searchData.items[0].snippet.title;
+      } else { // username, /c/, /beebomco etc.
+          const channelData = await fetchApi('channels', {
+              part: 'id,snippet',
+              forUsername: identifier.id,
+              key: apiKey,
+          });
+          if (!channelData.items || channelData.items.length === 0) {
+              return { data: null, error: `Could not find a channel with username ${identifier.id}.`, message: null };
+          }
+          channelId = channelData.items[0].id;
+          channelTitle = channelData.items[0].snippet.title;
       }
-      channelId = channelData.items[0].id;
-      channelTitle = channelData.items[0].snippet.title;
     }
+
 
     if (!channelId) {
       return { data: null, error: 'Could not determine the channel ID from the provided URL.', message: null };
