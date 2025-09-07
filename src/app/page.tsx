@@ -1,27 +1,33 @@
-import { ThemeToggle } from '@/components/theme-provider';
-import YoutubeFeed from '@/components/youtube-fetcher';
-import ScrollToTopButton from '@/components/scroll-to-top';
+import InsightPill from "@/components/InsightPill";
+import FeatureCard from "@/components/FeatureCard";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background pb-10">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
-            <div className='text-center'>
-              <h1 className="font-headline text-4xl font-bold tracking-tight text-primary md:text-5xl">
-                Youtube Tech Feed
-              </h1>
-              <p className="mt-3 text-lg text-muted-foreground md:text-xl">
-                Your daily digest of the latest tech videos.
-              </p>
-            </div>
-            <ThemeToggle />
-        </div>
-        
-        <YoutubeFeed />
-
+    <main className="mx-auto max-w-[430px] px-6 pt-5 pb-5">
+      <h1 className="mt-5 mb-5 text-3xl font-bold leading-tight text-white">
+        Key insights from this edition
+      </h1>
+      
+      <div className="space-y-3">
+        <InsightPill index={1} title="A Blueprint for the Future" />
+        <InsightPill index={2} title="Reimagining modern trade" />
       </div>
-      <ScrollToTopButton />
+
+      <div className="mt-4">
+        <FeatureCard
+          imageSrc="/feature.jpg"
+          headline="2.0"
+          body={
+            <>
+              The WTO could recover its mojo
+              <br />
+              by turning its back on the
+              <br />
+              multilateral trading system.
+            </>
+          }
+        />
+      </div>
     </main>
   );
 }
