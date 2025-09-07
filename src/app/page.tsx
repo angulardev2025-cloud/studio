@@ -1,33 +1,15 @@
-import InsightPill from "@/components/InsightPill";
-import FeatureCard from "@/components/FeatureCard";
+import YoutubeFeed from '@/components/youtube-fetcher';
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-[430px] px-6 pt-5 pb-5">
-      <h1 className="mt-5 mb-5 text-3xl font-bold leading-tight text-white">
-        Key insights from this edition
-      </h1>
-      
-      <div className="space-y-3">
-        <InsightPill index={1} title="A Blueprint for the Future" />
-        <InsightPill index={2} title="Reimagining modern trade" />
+    <main className="container mx-auto p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+           <h1 className="text-2xl font-bold tracking-tight">Key Insights</h1>
+           <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">v1</span>
+        </div>
       </div>
-
-      <div className="mt-4">
-        <FeatureCard
-          imageSrc="/feature.jpg"
-          headline="2.0"
-          body={
-            <>
-              The WTO could recover its mojo
-              <br />
-              by turning its back on the
-              <br />
-              multilateral trading system.
-            </>
-          }
-        />
-      </div>
+      <YoutubeFeed />
     </main>
   );
 }
