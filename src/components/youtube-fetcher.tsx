@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
-const HIT_COUNTER_KEY = 'youtubeApiHitCount';
+const HIT_COUNTER_KEY = 'youtubeApiHitCounter';
 
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -107,14 +107,18 @@ function JsonViewer({ data }: { data: VideoData[] }) {
           <Film />
           {showJson ? 'Hide' : 'Show'} JSON
         </Button>
-        <Button onClick={handleDownload} variant="outline">
-          <Download />
-          Download JSON
-        </Button>
-        <Button onClick={handleCopy} variant="outline">
-          <Copy />
-          Copy JSON
-        </Button>
+        {showJson && (
+          <>
+            <Button onClick={handleDownload} variant="outline">
+              <Download />
+              Download JSON
+            </Button>
+            <Button onClick={handleCopy} variant="outline">
+              <Copy />
+              Copy JSON
+            </Button>
+          </>
+        )}
       </div>
 
       {showJson && (
@@ -140,15 +144,32 @@ export default function YoutubeFeed() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
   const [hitCount, setHitCount] = useState(0);
 
-  // Load initial hit count from localStorage
+  const getISTDateString = () => {
+    // Get the date in YYYY-MM-DD format for the IST timezone
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  };
+  
+  // Load and check initial hit count from localStorage
   useEffect(() => {
     try {
-      const storedHits = localStorage.getItem(HIT_COUNTER_KEY);
-      if (storedHits) {
-        setHitCount(parseInt(storedHits, 10));
+      const storedData = localStorage.getItem(HIT_COUNTER_KEY);
+      const todayIST = getISTDateString();
+
+      if (storedData) {
+        const { count, date } = JSON.parse(storedData);
+        if (date === todayIST) {
+          setHitCount(count);
+        } else {
+          // It's a new day, reset the counter
+          localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
+          setHitCount(0);
+        }
+      } else {
+        // No data stored yet, initialize it
+         localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
       }
     } catch (error) {
-      console.error('Could not read from localStorage:', error);
+      console.error('Could not read/write to localStorage:', error);
     }
   }, []);
 
@@ -162,9 +183,20 @@ export default function YoutubeFeed() {
       setIsLoading(false);
       if (!result.error) {
         try {
-            const newHitCount = (parseInt(localStorage.getItem(HIT_COUNTER_KEY) || '0', 10)) + 1;
-            localStorage.setItem(HIT_COUNTER_KEY, newHitCount.toString());
+            const todayIST = getISTDateString();
+            const storedData = localStorage.getItem(HIT_COUNTER_KEY);
+            let newHitCount = 1;
+
+            if (storedData) {
+                const { count, date } = JSON.parse(storedData);
+                if (date === todayIST) {
+                    newHitCount = count + 1;
+                }
+            }
+            
+            localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: newHitCount, date: todayIST }));
             setHitCount(newHitCount);
+
         } catch (error) {
              console.error('Could not write to localStorage:', error);
         }
@@ -224,7 +256,7 @@ export default function YoutubeFeed() {
                 </Button>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2" title="Total API Hits">
+                <div className="flex items-center gap-2" title="Total API Hits Today (IST)">
                     <Server className="h-4 w-4" />
                     <AnimatedCounter value={hitCount} />
                 </div>
