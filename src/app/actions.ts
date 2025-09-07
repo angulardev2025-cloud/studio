@@ -171,19 +171,20 @@ async function fetchVideosForChannel(channelUrl: string, apiKey: string): Promis
 }
 
 async function fetchOfflineData(): Promise<VideoData[]> {
-  const mockDataDir = path.join(process.cwd(), 'src', 'mock-data');
-  const files = await fs.readdir(mockDataDir);
-  let allVideos: VideoData[] = [];
-
-  for (const file of files) {
-    if (file.endsWith('.json')) {
-      const filePath = path.join(mockDataDir, file);
-      const fileContent = await fs.readFile(filePath, 'utf-8');
-      const videos = JSON.parse(fileContent) as VideoData[];
-      allVideos = allVideos.concat(videos);
+  const mockDataPath = path.join(process.cwd(), 'src', 'mock-data', 'youtube-feed1.json');
+  try {
+    const fileContent = await fs.readFile(mockDataPath, 'utf-8');
+    const videos = JSON.parse(fileContent) as VideoData[];
+    // Remove duplicates
+    const uniqueVideos = Array.from(new Map(videos.map(video => [video.id, video])).values());
+    return uniqueVideos;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.warn(`Mock data file not found at ${mockDataPath}`);
+      return [];
     }
+    throw error;
   }
-  return allVideos;
 }
 
 // Main server action to fetch, combine, and sort videos from all channels
@@ -211,29 +212,36 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
   }
 
   try {
-    // Fetch all video arrays in parallel
-    const videoPromises = channelUrls.map(url => fetchVideosForChannel(url, apiKey));
-    const videosByChannel = await Promise.all(videoPromises);
+    // Separate priority channel from the rest
+    const [priorityChannelUrl, ...otherChannelUrls] = channelUrls;
 
-    // Shuffle by channel
-    const maxLength = Math.max(...videosByChannel.map(arr => arr.length));
-    const shuffledVideos: VideoData[] = [];
-    for (let i = 0; i < maxLength; i++) {
-        for (let j = 0; j < videosByChannel.length; j++) {
-            if (videosByChannel[j][i]) {
-                shuffledVideos.push(videosByChannel[j][i]);
-            }
-        }
-    }
+    // Fetch priority channel videos first
+    const priorityVideosPromise = fetchVideosForChannel(priorityChannelUrl, apiKey);
     
-    // Sort chronologically
-    const sortedVideos = shuffledVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    // Fetch other channels in parallel
+    const otherVideosPromises = otherChannelUrls.map(url => fetchVideosForChannel(url, apiKey));
 
-    if (sortedVideos.length === 0) {
+    // Await all promises
+    const [priorityVideos, ...otherVideosByChannel] = await Promise.all([
+        priorityVideosPromise,
+        ...otherVideosPromises
+    ]);
+    
+    // Flatten the rest of the videos
+    const otherVideos = otherVideosByChannel.flat();
+
+    // Sort each list chronologically
+    const sortedPriority = priorityVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    const sortedOthers = otherVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    
+    // Combine with priority videos at the front
+    const allVideos = [...sortedPriority, ...sortedOthers];
+
+    if (allVideos.length === 0) {
         return { data: [], error: null, message: 'No new videos found in the last 2 weeks.' };
     }
 
-    return { data: sortedVideos, error: null, message: `Successfully fetched ${sortedVideos.length} videos.` };
+    return { data: allVideos, error: null, message: `Successfully fetched ${allVideos.length} videos.` };
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
