@@ -5,23 +5,39 @@ import type { FetcherState, VideoData } from '@/lib/types';
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
 // Helper function to extract channel ID or handle from URL
-const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' } | null => {
+const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' | 'username' } | null => {
   try {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
 
-    const channelIdMatch = pathname.match(/\/channel\/(UC[\w-]{22})/);
-    if (channelIdMatch && channelIdMatch[1]) {
+    // Matches /channel/UC...
+    const channelIdMatch = pathname.match(/\/channel\/(UC[\w-]{24})/);
+    if (channelIdMatch?.[1]) {
       return { id: channelIdMatch[1], type: 'id' };
     }
 
+    // Matches /@handle
     const handleMatch = pathname.match(/\/@([\w.-]+)/);
-    if (handleMatch && handleMatch[1]) {
+    if (handleMatch?.[1]) {
       return { id: handleMatch[1], type: 'handle' };
     }
 
+    // Matches /user/username or /c/channelname
+    const userOrCNameMatch = pathname.match(/\/(?:user|c)\/([\w.-]+)/);
+    if (userOrCNameMatch?.[1]) {
+        return { id: userOrCNameMatch[1], type: 'username' };
+    }
+    
+    // Matches /customname (less specific, last resort)
+    const customNameMatch = pathname.match(/\/([\w.-]+)/);
+    if (customNameMatch?.[1]) {
+        return { id: customNameMatch[1], type: 'username' };
+    }
+
+
     return null;
   } catch (error) {
+    console.error('Error parsing channel URL:', error);
     return null;
   }
 };
@@ -60,11 +76,13 @@ export async function fetchYouTubeVideoData(
   }
 
   try {
-    let channelId = identifier.id;
+    let channelId: string | null = null;
     let channelTitle = '';
 
-    // Step 1: Resolve handle to channel ID if necessary
-    if (identifier.type === 'handle') {
+    // Step 1: Resolve identifier to channel ID
+    if (identifier.type === 'id') {
+      channelId = identifier.id;
+    } else if (identifier.type === 'handle') {
       const searchData = await fetchApi('search', {
         part: 'snippet',
         q: `@${identifier.id}`,
@@ -76,6 +94,21 @@ export async function fetchYouTubeVideoData(
       }
       channelId = searchData.items[0].id.channelId;
       channelTitle = searchData.items[0].snippet.title;
+    } else if (identifier.type === 'username') {
+      const channelData = await fetchApi('channels', {
+          part: 'id,snippet',
+          forUsername: identifier.id,
+          key: apiKey,
+      });
+      if (!channelData.items || channelData.items.length === 0) {
+          return { data: null, error: `Could not find a channel with username ${identifier.id}.`, message: null };
+      }
+      channelId = channelData.items[0].id;
+      channelTitle = channelData.items[0].snippet.title;
+    }
+
+    if (!channelId) {
+      return { data: null, error: 'Could not determine the channel ID from the provided URL.', message: null };
     }
 
     // Step 2: Get the 'uploads' playlist ID from the channel
