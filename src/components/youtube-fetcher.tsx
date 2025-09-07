@@ -109,22 +109,20 @@ function Results({ state }: { state: FetcherState }) {
           Found {state.data.length} Videos
         </h2>
         <div className="flex gap-2">
+           <Button variant="outline" size="icon" onClick={handleCopyJson} aria-label="Copy JSON">
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={handleDownloadJson} aria-label="Download JSON">
+            <Download className="h-4 w-4" />
+          </Button>
           <Button variant="outline" onClick={() => setShowJson(p => !p)}>
-            {showJson ? 'Hide' : 'Show'} Raw JSON
+            {showJson ? 'Hide JSON' : 'Show JSON'}
           </Button>
         </div>
       </div>
       {showJson ? (
         <Card className="relative">
           <CardContent className="p-0">
-            <div className="absolute right-2 top-2 z-10 flex gap-1">
-              <Button variant="ghost" size="icon" onClick={handleCopyJson} aria-label="Copy JSON">
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={handleDownloadJson} aria-label="Download JSON">
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
             <pre className="max-h-[600px] w-full overflow-auto rounded-lg bg-secondary/30 p-4 text-sm font-code">
               <code>{JSON.stringify(state.data, null, 2)}</code>
             </pre>
