@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Kannada Tech Explorer',
-  description: 'Fetch YouTube video data for any channel.',
+  title: 'Kannada Tech Feed',
+  description: 'Your daily digest of the latest tech videos.',
 };
 
 export default function RootLayout({
