@@ -10,6 +10,7 @@ import { AlertCircle, Copy, Download, Film, Loader2, Youtube } from 'lucide-reac
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
+import { channelUrls } from '@/lib/channels';
 
 function LoadingState() {
   return (
@@ -68,15 +69,15 @@ function JsonViewer({ data }: { data: VideoData[] }) {
     <div className="mt-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => setShowJson(!showJson)} variant="outline">
-          <Film className="mr-2" />
+          <Film />
           {showJson ? 'Hide' : 'Show'} JSON
         </Button>
         <Button onClick={handleDownload} variant="outline">
-          <Download className="mr-2" />
+          <Download />
           Download JSON
         </Button>
         <Button onClick={handleCopy} variant="outline">
-          <Copy className="mr-2" />
+          <Copy />
           Copy JSON
         </Button>
       </div>
@@ -101,6 +102,7 @@ export default function YoutubeFeed() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadFeed = () => {
+    setIsLoading(true);
     startTransition(async () => {
       const result = await fetchYouTubeFeed();
       setState(result);
@@ -111,6 +113,8 @@ export default function YoutubeFeed() {
   useEffect(() => {
     loadFeed();
   }, []);
+
+  const totalChannels = channelUrls.length;
 
   return (
     <>
@@ -123,16 +127,15 @@ export default function YoutubeFeed() {
           )}
           Fetch Videos
         </Button>
-        {state.data && (
-            <div className="text-sm text-muted-foreground">
-                Found {state.data.length} videos.
-            </div>
-        )}
+        <div className="text-sm text-muted-foreground">
+            {isPending && `Fetching from ${totalChannels} channels...`}
+            {!isPending && state.data && `Found ${state.data.length} videos.`}
+        </div>
       </div>
 
-      {isLoading && <LoadingState />}
+      {(isLoading || isPending) && <LoadingState />}
 
-      {state.error && (
+      {!isPending && state.error && (
         <Alert variant="destructive" className="mt-8">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>An Error Occurred</AlertTitle>
@@ -146,7 +149,7 @@ export default function YoutubeFeed() {
         </Alert>
       )}
 
-      {!isLoading && !state.error && (!state.data || state.data.length === 0) && (
+      {!isLoading && !isPending && !state.error && (!state.data || state.data.length === 0) && (
          <Alert className="mt-8">
            <Youtube className="h-4 w-4" />
            <AlertTitle>No New Videos</AlertTitle>
