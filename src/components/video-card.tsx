@@ -105,6 +105,7 @@ export default function VideoCard({ video }: VideoCardProps) {
             {formatDistanceToNow(publishedAtDate, { addSuffix: true })}
           </time>
           <div className="flex items-center gap-1">
+            {/*
              <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Summarize video">
@@ -134,6 +135,7 @@ export default function VideoCard({ video }: VideoCardProps) {
                 </DialogHeader>
               </DialogContent>
             </Dialog>
+            */}
             <Button variant="ghost" size="icon" asChild>
               <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video">
                 <Share2 />
