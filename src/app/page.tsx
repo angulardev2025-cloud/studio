@@ -4,7 +4,7 @@ import ScrollToTopButton from '@/components/scroll-to-top';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background pb-10">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
             <div className='text-center'>

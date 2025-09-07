@@ -6,7 +6,7 @@ import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff, CloudCog } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -148,11 +148,9 @@ export default function YoutubeFeed() {
   const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
 
   const getISTDateString = () => {
-    // Get the date in YYYY-MM-DD format for the IST timezone
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   };
   
-  // Load and check initial hit count from localStorage
   useEffect(() => {
     try {
       const storedData = localStorage.getItem(HIT_COUNTER_KEY);
@@ -163,12 +161,10 @@ export default function YoutubeFeed() {
         if (date === todayIST) {
           setHitCount(count);
         } else {
-          // It's a new day, reset the counter
           localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
           setHitCount(0);
         }
       } else {
-        // No data stored yet, initialize it
          localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
       }
     } catch (error) {
@@ -208,6 +204,10 @@ export default function YoutubeFeed() {
       }
     });
   }, []);
+
+  const handleReload = () => {
+    window.location.reload();
+  };
 
   const channelNames = useMemo(() => {
     if (!state.data) return [];
@@ -258,6 +258,10 @@ export default function YoutubeFeed() {
                 <Button onClick={() => loadFeed({ offline: true })} variant="outline" disabled={isPending}>
                     <WifiOff />
                     Offline Mode
+                </Button>
+                <Button onClick={handleReload} variant="outline">
+                    <CloudCog />
+                    Load Latest App
                 </Button>
                 <Button onClick={() => loadFeed()} variant="outline" size="icon" disabled={isPending}>
                     <RefreshCw className={isPending ? "animate-spin" : ""} />
@@ -332,7 +336,7 @@ export default function YoutubeFeed() {
         </div>
       </div>
 
-      {(isLoading || isPending) && <LoadingState />}
+      {(isLoading || isPending) && !fetchAttempted && <LoadingState />}
 
       {fetchAttempted && !isPending && state.error && (
         <Alert variant="destructive" className="mt-8">

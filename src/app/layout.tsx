@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProviderV2 } from '@/components/theme-provider';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Youtube Tech Feed',
@@ -31,6 +32,11 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProviderV2>
+        <footer className="fixed bottom-0 left-0 w-full bg-background/80 py-2 text-center text-xs text-muted-foreground backdrop-blur-sm">
+          <Link href="https://firebase.google.com/docs/studio" target='_blank' className='hover:text-primary'>
+            v1
+          </Link>
+        </footer>
       </body>
     </html>
   );
