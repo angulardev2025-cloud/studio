@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo, useRef, useCallback } from 'react';
+import { useEffect, useState, useTransition, useMemo, useCallback } from 'react';
 import { fetchYouTubeFeed } from '@/app/actions';
 import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -16,6 +16,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
+const HIT_COUNTER_KEY = 'youtubeApiHitCount';
+
+
+function AnimatedCounter({ value }: { value: number }) {
+  const [currentValue, setCurrentValue] = useState(0);
+
+  useEffect(() => {
+    const animationDuration = 500; // ms
+    const frameDuration = 1000 / 60; // 60fps
+    const totalFrames = Math.round(animationDuration / frameDuration);
+    let frame = 0;
+
+    const counter = setInterval(() => {
+      frame++;
+      const progress = frame / totalFrames;
+      const newValue = Math.round(value * progress);
+      setCurrentValue(newValue);
+
+      if (frame === totalFrames) {
+        clearInterval(counter);
+        setCurrentValue(value);
+      }
+    }, frameDuration);
+
+    return () => clearInterval(counter);
+  }, [value]);
+
+  return <span className="font-bold">{currentValue}</span>;
+}
+
 
 function LoadingState() {
   return (
@@ -108,20 +138,43 @@ export default function YoutubeFeed() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
+  const [hitCount, setHitCount] = useState(0);
 
-  const loadFeed = () => {
+  // Load initial hit count from localStorage
+  useEffect(() => {
+    try {
+      const storedHits = localStorage.getItem(HIT_COUNTER_KEY);
+      if (storedHits) {
+        setHitCount(parseInt(storedHits, 10));
+      }
+    } catch (error) {
+      console.error('Could not read from localStorage:', error);
+    }
+  }, []);
+
+
+  const loadFeed = useCallback(() => {
     setIsLoading(true);
-    setVisibleCount(INITIAL_LOAD_COUNT); // Reset visible count on new fetch
+    setVisibleCount(INITIAL_LOAD_COUNT);
     startTransition(async () => {
       const result = await fetchYouTubeFeed();
       setState(result);
       setIsLoading(false);
+      if (!result.error) {
+        try {
+            const newHitCount = (parseInt(localStorage.getItem(HIT_COUNTER_KEY) || '0', 10)) + 1;
+            localStorage.setItem(HIT_COUNTER_KEY, newHitCount.toString());
+            setHitCount(newHitCount);
+        } catch (error) {
+             console.error('Could not write to localStorage:', error);
+        }
+      }
     });
-  };
+  }, []);
 
   useEffect(() => {
     loadFeed();
-  }, []);
+  }, [loadFeed]);
 
   const channelNames = useMemo(() => {
     if (!state.data) return [];
@@ -138,7 +191,7 @@ export default function YoutubeFeed() {
                             video.description.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesChannel && matchesSearch;
     });
-    setVisibleCount(INITIAL_LOAD_COUNT); // Reset count when filters change
+    setVisibleCount(INITIAL_LOAD_COUNT);
     return videos;
   }, [state.data, searchTerm, selectedChannel]);
 
@@ -157,23 +210,30 @@ export default function YoutubeFeed() {
     <>
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={loadFeed} disabled={isPending}>
-              {isPending ? (
-                <Loader2 className="mr-2 animate-spin" />
-              ) : (
-                <Youtube className="mr-2" />
-              )}
-              Fetch Videos
-            </Button>
-             <Button onClick={loadFeed} variant="outline" size="icon" disabled={isPending}>
-                <RefreshCw className={isPending ? "animate-spin" : ""} />
-              </Button>
-          </div>
-          <div className="text-sm text-muted-foreground">
-              {isPending && `Fetching from ${totalChannels} channels...`}
-              {!isPending && state.data && `Found ${state.data.length} videos from ${totalChannels} channels.`}
-          </div>
+            <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={loadFeed} disabled={isPending}>
+                {isPending ? (
+                    <Loader2 className="mr-2 animate-spin" />
+                ) : (
+                    <Youtube className="mr-2" />
+                )}
+                Fetch Videos
+                </Button>
+                <Button onClick={loadFeed} variant="outline" size="icon" disabled={isPending}>
+                    <RefreshCw className={isPending ? "animate-spin" : ""} />
+                </Button>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2" title="Total API Hits">
+                    <Server className="h-4 w-4" />
+                    <AnimatedCounter value={hitCount} />
+                </div>
+                <span>|</span>
+                <div>
+                {isPending && `Fetching from ${totalChannels} channels...`}
+                {!isPending && state.data && `Found ${state.data.length} videos from ${totalChannels} channels.`}
+                </div>
+            </div>
         </div>
 
         <div className="flex flex-col gap-4 md:flex-row">
