@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import type { VideoData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 
 type VideoCardProps = {
   video: VideoData;
@@ -32,7 +32,7 @@ export default function VideoCard({ video }: VideoCardProps) {
           </div>
         )}
        </Link>
-      <CardHeader className="p-4">
+      <CardHeader className="flex-grow p-4">
         <CardTitle className="font-headline text-base font-bold leading-tight">
           <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary">
             {video.title}
@@ -42,10 +42,22 @@ export default function VideoCard({ video }: VideoCardProps) {
           {video.uploader}
         </CardDescription>
       </CardHeader>
-      <CardFooter className="p-4 pt-0 text-xs text-muted-foreground">
-          <time dateTime={video.publishedAt}>
+      {video.description && (
+        <CardContent className="p-4 pt-0">
+          <p className="line-clamp-3 text-sm text-muted-foreground">
+            {video.description}
+          </p>
+        </CardContent>
+      )}
+      <CardFooter className="mt-auto flex items-center justify-between p-4 pt-0">
+          <time dateTime={video.publishedAt} className="text-xs text-muted-foreground">
             {formatDistanceToNow(publishedAtDate, { addSuffix: true })}
           </time>
+          <Button variant="ghost" size="icon" asChild>
+            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video">
+              <Share2 />
+            </Link>
+          </Button>
       </CardFooter>
     </Card>
   );
