@@ -3,6 +3,8 @@
 import { sub } from 'date-fns';
 import { channelUrls } from '@/lib/channels';
 import type { FetcherState, VideoData } from '@/lib/types';
+import fs from 'fs/promises';
+import path from 'path';
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
@@ -168,9 +170,36 @@ async function fetchVideosForChannel(channelUrl: string, apiKey: string): Promis
     }));
 }
 
+async function fetchOfflineData(): Promise<VideoData[]> {
+  const mockDataDir = path.join(process.cwd(), 'src', 'mock-data');
+  const files = await fs.readdir(mockDataDir);
+  let allVideos: VideoData[] = [];
+
+  for (const file of files) {
+    if (file.endsWith('.json')) {
+      const filePath = path.join(mockDataDir, file);
+      const fileContent = await fs.readFile(filePath, 'utf-8');
+      const videos = JSON.parse(fileContent) as VideoData[];
+      allVideos = allVideos.concat(videos);
+    }
+  }
+  return allVideos;
+}
 
 // Main server action to fetch, combine, and sort videos from all channels
-export async function fetchYouTubeFeed(): Promise<FetcherState> {
+export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean } = {}): Promise<FetcherState> {
+  if (offline) {
+    try {
+      const offlineVideos = await fetchOfflineData();
+       const sortedVideos = offlineVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+       return { data: sortedVideos, error: null, message: `Successfully loaded ${sortedVideos.length} videos from local data.` };
+    } catch (err) {
+       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+       console.error("Error in fetchOfflineData:", errorMessage);
+       return { data: null, error: `Offline Data Error: ${errorMessage}`, message: null };
+    }
+  }
+  
   const apiKey = process.env.YT_API_KEY;
 
   if (!apiKey) {

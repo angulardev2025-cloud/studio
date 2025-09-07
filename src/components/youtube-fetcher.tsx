@@ -6,7 +6,7 @@ import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -177,15 +177,16 @@ export default function YoutubeFeed() {
   }, []);
 
 
-  const loadFeed = useCallback(() => {
+  const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
     setIsLoading(true);
     setFetchAttempted(true);
     setVisibleCount(INITIAL_LOAD_COUNT);
     startTransition(async () => {
-      const result = await fetchYouTubeFeed();
+      const result = await fetchYouTubeFeed({ offline: options.offline });
       setState(result);
       setIsLoading(false);
-      if (!result.error) {
+      
+      if (!result.error && !options.offline) {
         try {
             const todayIST = getISTDateString();
             const storedData = localStorage.getItem(HIT_COUNTER_KEY);
@@ -244,7 +245,7 @@ export default function YoutubeFeed() {
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={loadFeed} disabled={isPending}>
+                <Button onClick={() => loadFeed()} disabled={isPending}>
                 {isPending ? (
                     <Loader2 className="mr-2 animate-spin" />
                 ) : (
@@ -252,7 +253,11 @@ export default function YoutubeFeed() {
                 )}
                 Fetch Videos
                 </Button>
-                <Button onClick={loadFeed} variant="outline" size="icon" disabled={isPending}>
+                <Button onClick={() => loadFeed({ offline: true })} variant="outline" disabled={isPending}>
+                    <WifiOff />
+                    Offline Mode
+                </Button>
+                <Button onClick={() => loadFeed()} variant="outline" size="icon" disabled={isPending}>
                     <RefreshCw className={isPending ? "animate-spin" : ""} />
                 </Button>
             </div>
@@ -333,7 +338,7 @@ export default function YoutubeFeed() {
           <AlertTitle>An Error Occurred</AlertTitle>
           <AlertDescription>
             {state.error}
-            <Button onClick={loadFeed} variant="secondary" className="mt-4" disabled={isPending}>
+            <Button onClick={() => loadFeed()} variant="secondary" className="mt-4" disabled={isPending}>
                {isPending ? <Loader2 className="mr-2 animate-spin" /> : null}
               Retry
             </Button>
@@ -369,7 +374,7 @@ export default function YoutubeFeed() {
              </div>
           )}
 
-          {hasMore && (
+          {hasMore && viewMode === 'grid' && (
             <div className="mt-8 text-center">
               <Button onClick={loadMore} variant="outline">Load More</Button>
             </div>
