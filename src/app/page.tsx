@@ -1,5 +1,6 @@
 import { ThemeToggle } from '@/components/theme-provider';
 import YoutubeFeed from '@/components/youtube-fetcher';
+import ScrollToTopButton from '@/components/scroll-to-top';
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
         <YoutubeFeed />
 
       </div>
+      <ScrollToTopButton />
     </main>
   );
 }
