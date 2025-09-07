@@ -27,9 +27,9 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
         effect={'cards'}
         grabCursor={true}
         modules={[EffectCards, Navigation]}
-        className="w-full h-[550px]"
+        className="w-full h-[550px] sm:h-[480px]"
         cardsEffect={{
-          perSlideOffset: 15,
+          perSlideOffset: 12,
           perSlideRotate: 5,
           slideShadows: true,
         }}
@@ -43,9 +43,9 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
           return (
             <SwiperSlide key={video.id}>
               <Card className="flex flex-col h-full overflow-hidden shadow-lg bg-card">
-                  <CardHeader className='pb-2'>
+                  <CardHeader className='pb-2 px-4 sm:px-6'>
                       <div className="flex items-center justify-between">
-                          <span className="text-4xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
+                          <span className="text-3xl sm:text-4xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
                            <div className="flex items-center gap-1">
                               <Button variant="ghost" size="icon" asChild>
                                   <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video">
@@ -55,8 +55,8 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
                            </div>
                       </div>
                   </CardHeader>
-                  <CardContent className="flex-grow flex flex-col md:flex-row gap-6 p-6 pt-0">
-                       <div className="w-full md:w-2/5 aspect-video relative shrink-0 overflow-hidden rounded-lg">
+                  <CardContent className="flex-grow flex flex-col gap-4 p-4 sm:p-6 pt-0">
+                       <div className="w-full aspect-video relative shrink-0 overflow-hidden rounded-lg">
                           <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
                               {video.thumbnailUrl ? (
                                   <Image
@@ -64,7 +64,7 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
                                       alt={video.title}
                                       fill
                                       className="object-cover"
-                                      sizes="(max-width: 768px) 40vw, 33vw"
+                                      sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 40vw"
                                       data-ai-hint="youtube thumbnail"
                                   />
                                   ) : (
@@ -75,15 +75,15 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
                           </Link>
                       </div>
                       <div className="flex-grow flex flex-col">
-                          <CardTitle className="font-headline text-xl font-semibold tracking-tight line-clamp-3 mb-2">
+                          <CardTitle className="font-headline text-lg sm:text-xl font-semibold tracking-tight line-clamp-3 mb-2">
                               <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
                                   {video.title}
                               </Link>
                           </CardTitle>
-                          <CardDescription className="text-sm text-muted-foreground mb-4">
+                          <CardDescription className="text-sm text-muted-foreground mb-3">
                               By {video.uploader}
                           </CardDescription>
-                          <p className="text-muted-foreground text-sm mb-4 line-clamp-6 flex-grow">{video.description}</p>
+                          <p className="text-muted-foreground text-sm mb-4 line-clamp-4 sm:line-clamp-5 flex-grow">{video.description}</p>
                            <time dateTime={video.publishedAt} className="text-xs text-muted-foreground mt-auto">
                               {formatDistanceToNow(publishedAtDate, { addSuffix: true })}
                           </time>
