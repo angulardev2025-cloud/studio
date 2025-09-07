@@ -144,6 +144,11 @@ function Results({ state }: { state: FetcherState }) {
 export default function YoutubeFetcher() {
   const [state, formAction] = useActionState(fetchYouTubeVideoData, initialState);
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (state.error) {
@@ -160,6 +165,10 @@ export default function YoutubeFetcher() {
       });
     }
   }, [state, toast]);
+
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <form action={formAction} className="space-y-8">
