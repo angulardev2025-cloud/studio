@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo, useCallback } from 'react';
-import { fetchYouTubeFeed } from '@/app/actions';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
@@ -14,6 +13,7 @@ import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import VideoDeckCard from './video-deck-card';
+import { useRouter } from 'next/navigation';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -136,16 +136,14 @@ function JsonViewer({ data }: { data: VideoData[] }) {
 }
 
 
-export default function YoutubeFeed() {
-  const [state, setState] = useState<FetcherState>({ data: null, error: null, message: null });
-  const [isPending, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(false);
-  const [fetchAttempted, setFetchAttempted] = useState(false);
+export default function YoutubeFeed({ initialState }: { initialState: FetcherState }) {
+  const [state, setState] = useState<FetcherState>(initialState);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
   const [hitCount, setHitCount] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
+  const router = useRouter();
 
   const getISTDateString = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -172,38 +170,10 @@ export default function YoutubeFeed() {
     }
   }, []);
 
-
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
-    setIsLoading(true);
-    setFetchAttempted(true);
-    setVisibleCount(INITIAL_LOAD_COUNT);
-    startTransition(async () => {
-      const result = await fetchYouTubeFeed({ offline: options.offline });
-      setState(result);
-      setIsLoading(false);
-      
-      if (!result.error && !options.offline) {
-        try {
-            const todayIST = getISTDateString();
-            const storedData = localStorage.getItem(HIT_COUNTER_KEY);
-            let newHitCount = 1;
-
-            if (storedData) {
-                const { count, date } = JSON.parse(storedData);
-                if (date === todayIST) {
-                    newHitCount = count + 1;
-                }
-            }
-            
-            localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: newHitCount, date: todayIST }));
-            setHitCount(newHitCount);
-
-        } catch (error) {
-             console.error('Could not write to localStorage:', error);
-        }
-      }
-    });
-  }, []);
+    const url = options.offline ? '/?offline=true' : '/';
+    router.push(url);
+  }, [router]);
 
   const handleReload = () => {
     window.location.reload();
@@ -247,15 +217,11 @@ export default function YoutubeFeed() {
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={() => loadFeed()} disabled={isPending}>
-                {isPending ? (
-                    <Loader2 className="mr-2 animate-spin" />
-                ) : (
-                    <Youtube className="mr-2" />
-                )}
-                Fetch Videos
+                <Button onClick={() => loadFeed()}>
+                  <Youtube className="mr-2" />
+                  Fetch Videos
                 </Button>
-                <Button onClick={() => loadFeed({ offline: true })} variant="outline" disabled={isPending}>
+                <Button onClick={() => loadFeed({ offline: true })} variant="outline">
                     <WifiOff />
                     Offline Mode
                 </Button>
@@ -263,8 +229,8 @@ export default function YoutubeFeed() {
                     <CloudCog />
                     Load Latest App
                 </Button>
-                <Button onClick={() => loadFeed()} variant="outline" size="icon" disabled={isPending}>
-                    <RefreshCw className={isPending ? "animate-spin" : ""} />
+                <Button onClick={() => loadFeed()} variant="outline" size="icon">
+                    <RefreshCw />
                 </Button>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -274,8 +240,7 @@ export default function YoutubeFeed() {
                 </div>
                 <span>|</span>
                 <div>
-                {isPending && `Fetching from ${totalChannels} channels...`}
-                {!isPending && state.data && `Found ${state.data.length} videos from ${totalChannels} channels.`}
+                {state.data && `Found ${state.data.length} videos from ${totalChannels} channels.`}
                 </div>
             </div>
         </div>
@@ -336,23 +301,20 @@ export default function YoutubeFeed() {
         </div>
       </div>
 
-      {(isLoading || isPending) && !fetchAttempted && <LoadingState />}
-
-      {fetchAttempted && !isPending && state.error && (
+      {state.error && (
         <Alert variant="destructive" className="mt-8">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>An Error Occurred</AlertTitle>
           <AlertDescription>
             {state.error}
-            <Button onClick={() => loadFeed()} variant="secondary" className="mt-4" disabled={isPending}>
-               {isPending ? <Loader2 className="mr-2 animate-spin" /> : null}
+            <Button onClick={() => loadFeed()} variant="secondary" className="mt-4">
               Retry
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {fetchAttempted && !isLoading && !isPending && !state.error && (!filteredVideos || filteredVideos.length === 0) && (
+      {!state.error && (!filteredVideos || filteredVideos.length === 0) && (
          <Alert className="mt-8">
            <Youtube className="h-4 w-4" />
            <AlertTitle>No Videos Found</AlertTitle>
