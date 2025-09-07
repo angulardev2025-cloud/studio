@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useActionState } from 'react';
+import { useEffect, useState } from 'react';
+import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Copy, Download, Loader2, Youtube } from 'lucide-react';
 
@@ -167,7 +168,21 @@ export default function YoutubeFetcher() {
   }, [state, toast]);
 
   if (!isClient) {
-    return null;
+    return (
+      <div className="space-y-8">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="flex-grow space-y-1">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-10 w-full sm:w-32" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
