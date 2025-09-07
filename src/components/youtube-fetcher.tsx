@@ -6,13 +6,14 @@ import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import VideoDeckCard from './video-deck-card';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -144,6 +145,7 @@ export default function YoutubeFeed() {
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
   const [hitCount, setHitCount] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
 
   const getISTDateString = () => {
     // Get the date in YYYY-MM-DD format for the IST timezone
@@ -300,6 +302,26 @@ export default function YoutubeFeed() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                <Button
+                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setViewMode('grid')}
+                >
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    Grid
+                </Button>
+                <Button
+                    variant={viewMode === 'deck' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setViewMode('deck')}
+                >
+                    <List className="mr-2 h-4 w-4" />
+                    Deck
+                </Button>
+            </div>
         </div>
       </div>
 
@@ -335,11 +357,17 @@ export default function YoutubeFeed() {
       {visibleVideos && visibleVideos.length > 0 && (
         <>
           <JsonViewer data={filteredVideos} />
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {visibleVideos.map((video) => (
-              <VideoCard key={video.id} video={video} />
-            ))}
-          </div>
+          {viewMode === 'grid' ? (
+            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleVideos.map((video) => (
+                <VideoCard key={video.id} video={video} />
+              ))}
+            </div>
+          ) : (
+             <div className="mt-8">
+                <VideoDeckCard videos={visibleVideos} />
+             </div>
+          )}
 
           {hasMore && (
             <div className="mt-8 text-center">
