@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo } from 'react';
+import { useEffect, useState, useTransition, useMemo, useRef, useCallback } from 'react';
 import { fetchYouTubeFeed } from '@/app/actions';
 import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,10 +14,13 @@ import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
+const INITIAL_LOAD_COUNT = 12;
+const LOAD_MORE_COUNT = 8;
+
 function LoadingState() {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {[...Array(12)].map((_, i) => (
+      {[...Array(INITIAL_LOAD_COUNT)].map((_, i) => (
         <div key={i} className="flex flex-col space-y-3">
           <Skeleton className="h-[200px] w-full rounded-xl" />
           <div className="space-y-2">
@@ -104,9 +107,11 @@ export default function YoutubeFeed() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
 
   const loadFeed = () => {
     setIsLoading(true);
+    setVisibleCount(INITIAL_LOAD_COUNT); // Reset visible count on new fetch
     startTransition(async () => {
       const result = await fetchYouTubeFeed();
       setState(result);
@@ -126,15 +131,26 @@ export default function YoutubeFeed() {
 
   const filteredVideos = useMemo(() => {
     if (!state.data) return [];
-    return state.data.filter(video => {
+    const videos = state.data.filter(video => {
       const matchesChannel = selectedChannel === 'all' || video.uploader === selectedChannel;
       const matchesSearch = searchTerm.trim() === '' || 
                             video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             video.description.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesChannel && matchesSearch;
     });
+    setVisibleCount(INITIAL_LOAD_COUNT); // Reset count when filters change
+    return videos;
   }, [state.data, searchTerm, selectedChannel]);
 
+  const visibleVideos = useMemo(() => {
+    return filteredVideos.slice(0, visibleCount);
+  }, [filteredVideos, visibleCount]);
+
+  const loadMore = () => {
+    setVisibleCount(prevCount => prevCount + LOAD_MORE_COUNT);
+  }
+
+  const hasMore = visibleCount < (filteredVideos?.length || 0);
   const totalChannels = channelUrls.length;
 
   return (
@@ -225,14 +241,20 @@ export default function YoutubeFeed() {
          </Alert>
       )}
       
-      {filteredVideos && filteredVideos.length > 0 && (
+      {visibleVideos && visibleVideos.length > 0 && (
         <>
           <JsonViewer data={filteredVideos} />
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredVideos.map((video) => (
+            {visibleVideos.map((video) => (
               <VideoCard key={video.id} video={video} />
             ))}
           </div>
+
+          {hasMore && (
+            <div className="mt-8 text-center">
+              <Button onClick={loadMore} variant="outline">Load More</Button>
+            </div>
+          )}
         </>
       )}
     </>
