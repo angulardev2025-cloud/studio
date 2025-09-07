@@ -8,8 +8,8 @@ import Link from 'next/link';
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Key Insights',
-  description: 'Key insights from this edition',
+  title: 'YT Channel Shorts',
+  description: 'The latest videos from your favorite tech channels.',
 };
 
 export default function RootLayout({
