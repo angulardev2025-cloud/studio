@@ -6,7 +6,7 @@ import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, Youtube } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -119,14 +119,19 @@ export default function YoutubeFeed() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <Button onClick={loadFeed} disabled={isPending}>
-          {isPending ? (
-            <Loader2 className="mr-2 animate-spin" />
-          ) : (
-            <Youtube className="mr-2" />
-          )}
-          Fetch Videos
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={loadFeed} disabled={isPending}>
+            {isPending ? (
+              <Loader2 className="mr-2 animate-spin" />
+            ) : (
+              <Youtube className="mr-2" />
+            )}
+            Fetch Videos
+          </Button>
+           <Button onClick={loadFeed} variant="outline" size="icon" disabled={isPending}>
+              <RefreshCw className={isPending ? "animate-spin" : ""} />
+            </Button>
+        </div>
         <div className="text-sm text-muted-foreground">
             {isPending && `Fetching from ${totalChannels} channels...`}
             {!isPending && state.data && `Found ${state.data.length} videos.`}
