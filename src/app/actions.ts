@@ -28,12 +28,11 @@ const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' 
         return { id: userOrCNameMatch[1], type: 'username' };
     }
     
-    // Matches /customname (less specific, last resort)
-    const customNameMatch = pathname.match(/\/([\w.-]+)/);
+    // Matches /channelname (less specific, last resort)
+    const customNameMatch = pathname.match(/^\/([\w.-]+)$/);
     if (customNameMatch?.[1]) {
         return { id: customNameMatch[1], type: 'username' };
     }
-
 
     return null;
   } catch (error) {
