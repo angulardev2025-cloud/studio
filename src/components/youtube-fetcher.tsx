@@ -174,7 +174,8 @@ export default function YoutubeFetcher() {
                 id="channelUrl"
                 name="channelUrl"
                 type="url"
-                placeholder="https://www.youtube.com/@kannadatech"
+                placeholder="http://www.youtube.com/@techinkannada360"
+                defaultValue="http://www.youtube.com/@techinkannada360"
                 required
                 className="mt-1"
               />
