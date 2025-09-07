@@ -138,7 +138,8 @@ function JsonViewer({ data }: { data: VideoData[] }) {
 export default function YoutubeFeed() {
   const [state, setState] = useState<FetcherState>({ data: null, error: null, message: null });
   const [isPending, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
@@ -176,6 +177,7 @@ export default function YoutubeFeed() {
 
   const loadFeed = useCallback(() => {
     setIsLoading(true);
+    setFetchAttempted(true);
     setVisibleCount(INITIAL_LOAD_COUNT);
     startTransition(async () => {
       const result = await fetchYouTubeFeed();
@@ -204,10 +206,6 @@ export default function YoutubeFeed() {
     });
   }, []);
 
-  useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
-
   const channelNames = useMemo(() => {
     if (!state.data) return [];
     const names = new Set(state.data.map(video => video.uploader));
@@ -228,6 +226,7 @@ export default function YoutubeFeed() {
   }, [state.data, searchTerm, selectedChannel]);
 
   const visibleVideos = useMemo(() => {
+    if (!filteredVideos) return [];
     return filteredVideos.slice(0, visibleCount);
   }, [filteredVideos, visibleCount]);
 
@@ -289,7 +288,7 @@ export default function YoutubeFeed() {
                 </Button>
               )}
             </div>
-            <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+            <Select value={selectedChannel} onValueChange={setSelectedChannel} disabled={!state.data}>
               <SelectTrigger className="w-full md:w-[280px]">
                 <SelectValue placeholder="Filter by channel" />
               </SelectTrigger>
@@ -306,7 +305,7 @@ export default function YoutubeFeed() {
 
       {(isLoading || isPending) && <LoadingState />}
 
-      {!isPending && state.error && (
+      {fetchAttempted && !isPending && state.error && (
         <Alert variant="destructive" className="mt-8">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>An Error Occurred</AlertTitle>
@@ -320,7 +319,7 @@ export default function YoutubeFeed() {
         </Alert>
       )}
 
-      {!isLoading && !isPending && !state.error && (!filteredVideos || filteredVideos.length === 0) && (
+      {fetchAttempted && !isLoading && !isPending && !state.error && (!filteredVideos || filteredVideos.length === 0) && (
          <Alert className="mt-8">
            <Youtube className="h-4 w-4" />
            <AlertTitle>No Videos Found</AlertTitle>
