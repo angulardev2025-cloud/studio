@@ -19,49 +19,26 @@ import { Badge } from './ui/badge';
 type VideoCardProps = {
   video: VideoData;
   index: number;
+  isRead: boolean;
+  onView: (videoId: string) => void;
 };
 
-const READ_VIDEOS_KEY = 'readVideos';
-
-export default function VideoCard({ video, index }: VideoCardProps) {
+export default function VideoCard({ video, index, isRead, onView }: VideoCardProps) {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isRead, setIsRead] = useState(false);
   const { toast } = useToast();
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const handleMarkAsRead = () => {
-    if (isRead) return;
-    try {
-      const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
-      if (!readVideos.includes(video.id)) {
-        const updatedReadVideos = [...readVideos, video.id];
-        localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(updatedReadVideos));
-        setIsRead(true);
-      }
-    } catch (e) {
-      console.error('Failed to save read video status to localStorage', e);
-    }
-  };
-
   useEffect(() => {
-    // Check initial read state from localStorage
-    try {
-      const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
-      if (readVideos.includes(video.id)) {
-        setIsRead(true);
-      }
-    } catch (e) {
-      console.error('Failed to parse read videos from localStorage', e);
-    }
-
     // Set up Intersection Observer
+    if (isRead || !cardRef.current) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          handleMarkAsRead();
+          onView(video.id);
           // We can disconnect the observer after the card has been viewed once
           if (cardRef.current) {
             observer.unobserve(cardRef.current);
@@ -75,17 +52,16 @@ export default function VideoCard({ video, index }: VideoCardProps) {
       }
     );
 
-    if (cardRef.current && !isRead) {
-      observer.observe(cardRef.current);
-    }
+    observer.observe(cardRef.current);
 
     // Cleanup observer on component unmount
     return () => {
       if (cardRef.current) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         observer.unobserve(cardRef.current);
       }
     };
-  }, [video.id, isRead]);
+  }, [video.id, isRead, onView]);
 
 
   const publishedAtDate = new Date(video.publishedAt);
@@ -129,7 +105,7 @@ export default function VideoCard({ video, index }: VideoCardProps) {
 
   return (
     <Card ref={cardRef} className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl">
-      <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative">
+      <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative" onClick={() => onView(video.id)}>
         {isRead && (
             <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
         )}
@@ -157,7 +133,7 @@ export default function VideoCard({ video, index }: VideoCardProps) {
         <span className="text-3xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
         <div className="flex flex-col">
             <CardTitle className="font-headline text-base font-bold leading-tight">
-            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary">
+            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary" onClick={() => onView(video.id)}>
                 {video.title}
             </Link>
             </CardTitle>
@@ -179,7 +155,7 @@ export default function VideoCard({ video, index }: VideoCardProps) {
           </time>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" asChild>
-              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video">
+              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={() => onView(video.id)}>
                 <Share2 />
               </Link>
             </Button>

@@ -13,12 +13,14 @@ import { Card, CardContent } from './ui/card';
 import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import VideoDeckCard from './video-deck-card';
+import VideoDeckCard, { SeenVideosList } from './video-deck-card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
 const HIT_COUNTER_KEY = 'youtubeApiHitCounter';
+const READ_VIDEOS_KEY = 'readVideos';
 
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -147,6 +149,11 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<'online' | 'offline' | null>(null);
 
+  const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
+  const [unseenVideos, setUnseenVideos] = useState<VideoData[]>([]);
+  const [seenVideos, setSeenVideos] = useState<VideoData[]>([]);
+
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -170,13 +177,47 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       } else {
          localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
       }
+
+      const storedReadIds: string[] = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
+      setReadVideoIds(new Set(storedReadIds));
+
     } catch (error) {
       console.error('Could not read/write to localStorage:', error);
     }
     
-    // Update state when initialState changes
     setState(initialState);
   }, [initialState]);
+
+  useEffect(() => {
+    if (!state.data) return;
+
+    const filtered = state.data.filter(video => {
+      const matchesChannel = selectedChannel === 'all' || video.uploader === selectedChannel;
+      const matchesSearch = searchTerm.trim() === '' || 
+                            video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            video.description.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesChannel && matchesSearch;
+    });
+
+    const initialUnseen = filtered.filter(v => !readVideoIds.has(v.id));
+    const initialSeen = filtered.filter(v => readVideoIds.has(v.id));
+    
+    setUnseenVideos(initialUnseen);
+    setSeenVideos(initialSeen.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()));
+    setVisibleCount(INITIAL_LOAD_COUNT);
+
+  }, [state.data, searchTerm, selectedChannel, readVideoIds]);
+
+
+  const markAsRead = useCallback((videoId: string) => {
+    if (readVideoIds.has(videoId)) return;
+
+    const newReadIds = new Set(readVideoIds);
+    newReadIds.add(videoId);
+    setReadVideoIds(newReadIds);
+    localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
+  }, [readVideoIds]);
+
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
     const action = options.offline ? 'offline' : 'online';
@@ -189,20 +230,15 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
             params.delete('offline');
         }
         router.push(`?${params.toString()}`);
-        // The page will re-render with new server-side props,
-        // so we don't need to manually call router.refresh() or reset loading state here.
     });
   }, [router]);
 
-  // Reset loading state if the component is still mounted after navigation
   useEffect(() => {
       const isOffline = searchParams.get('offline') === 'true';
-      if (isOffline && loadingAction === 'offline') {
-          setLoadingAction(null);
-      } else if (!isOffline && loadingAction === 'online') {
+      if ((isOffline && loadingAction === 'offline') || (!isOffline && loadingAction === 'online')) {
           setLoadingAction(null);
       }
-  }, [searchParams, loadingAction]);
+  }, [searchParams, loadingAction, state]);
 
 
   const handleReload = () => {
@@ -210,37 +246,21 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   };
 
   const channelNames = useMemo(() => {
-    if (!state.data) return [];
-    const names = new Set(state.data.map(video => video.uploader));
+    if (!initialState.data) return [];
+    const names = new Set(initialState.data.map(video => video.uploader));
     return ['all', ...Array.from(names)];
-  }, [state.data]);
+  }, [initialState.data]);
 
-  const filteredVideos = useMemo(() => {
-    if (!state.data) return [];
-    const videos = state.data.filter(video => {
-      const matchesChannel = selectedChannel === 'all' || video.uploader === selectedChannel;
-      const matchesSearch = searchTerm.trim() === '' || 
-                            video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            video.description.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesChannel && matchesSearch;
-    });
-    setVisibleCount(INITIAL_LOAD_COUNT);
-    return videos;
-  }, [state.data, searchTerm, selectedChannel]);
-
-  const visibleVideos = useMemo(() => {
-    if (!filteredVideos) return [];
-    return filteredVideos.slice(0, visibleCount);
-  }, [filteredVideos, visibleCount]);
+  const visibleUnseenVideos = useMemo(() => {
+    return unseenVideos.slice(0, visibleCount);
+  }, [unseenVideos, visibleCount]);
 
   const loadMore = () => {
     setVisibleCount(prevCount => prevCount + LOAD_MORE_COUNT);
   }
 
-  const hasMore = visibleCount < (filteredVideos?.length || 0);
+  const hasMore = visibleCount < (unseenVideos?.length || 0);
   const totalChannels = channelUrls.length;
-
-  const videosForCurrentView = viewMode === 'grid' ? visibleVideos : filteredVideos;
 
   return (
     <>
@@ -349,59 +369,70 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
             </div>
         </div>
       </div>
-
-      {state.error && !isPending && (
-        <Alert variant="destructive" className="mt-8">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>An Error Occurred</AlertTitle>
-          <AlertDescription>
-            {state.error}
-            <Button onClick={() => loadFeed()} variant="secondary" className="mt-4">
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!state.error && !isPending && (!filteredVideos || filteredVideos.length === 0) && (
-         <Alert className="mt-8">
-           <Youtube className="h-4 w-4" />
-           <AlertTitle>No Videos Found</AlertTitle>
-           <AlertDescription>
-             {searchTerm || selectedChannel !== 'all' 
-                ? "No videos match your current search/filter criteria."
-                : (state.message || "Couldn't find any new videos from your channels in the last 2 weeks.")
-             }
-           </AlertDescription>
-         </Alert>
-      )}
       
-      {!isPending && videosForCurrentView && videosForCurrentView.length > 0 && (
-        <>
-          <JsonViewer data={filteredVideos} />
-          {viewMode === 'grid' ? (
-             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {videosForCurrentView.map((video, index) => (
-                <VideoCard key={video.id} video={video} index={index} />
-              ))}
-            </div>
-          ) : (
-             <div className="mt-8">
-                <VideoDeckCard videos={videosForCurrentView} />
-             </div>
-          )}
+      <Tabs defaultValue="tosee" className="w-full mt-4">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="tosee">To See ({unseenVideos.length})</TabsTrigger>
+            <TabsTrigger value="seen">Already Seen ({seenVideos.length})</TabsTrigger>
+        </TabsList>
 
-          {hasMore && viewMode === 'grid' && (
-            <div className="mt-8 text-center">
-              <Button onClick={loadMore} variant="outline">Load More</Button>
-            </div>
-          )}
-        </>
-      )}
+        <TabsContent value="tosee">
+            {state.error && !isPending && (
+                <Alert variant="destructive" className="mt-8">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>An Error Occurred</AlertTitle>
+                <AlertDescription>
+                    {state.error}
+                    <Button onClick={() => loadFeed()} variant="secondary" className="mt-4">
+                    Retry
+                    </Button>
+                </AlertDescription>
+                </Alert>
+            )}
 
-      {isPending && <LoadingState />}
+            {!state.error && !isPending && unseenVideos.length === 0 && (
+                <Alert className="mt-8">
+                <Youtube className="h-4 w-4" />
+                <AlertTitle>All Caught Up!</AlertTitle>
+                <AlertDescription>
+                    {searchTerm || selectedChannel !== 'all' 
+                        ? "No unseen videos match your current search/filter criteria. Check the 'Already Seen' tab!"
+                        : "You've seen all available videos. Check the 'Already Seen' tab or fetch new ones."
+                    }
+                </AlertDescription>
+                </Alert>
+            )}
+            
+            {!isPending && unseenVideos.length > 0 && (
+                <>
+                <JsonViewer data={unseenVideos} />
+                {viewMode === 'grid' ? (
+                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {visibleUnseenVideos.map((video, index) => (
+                        <VideoCard key={video.id} video={video} index={index} isRead={readVideoIds.has(video.id)} onView={markAsRead} />
+                    ))}
+                    </div>
+                ) : (
+                    <div className="mt-8">
+                        <VideoDeckCard unseenVideos={unseenVideos} seenVideos={seenVideos} onView={markAsRead} readVideoIds={readVideoIds} />
+                    </div>
+                )}
+
+                {hasMore && viewMode === 'grid' && (
+                    <div className="mt-8 text-center">
+                    <Button onClick={loadMore} variant="outline">Load More</Button>
+                    </div>
+                )}
+                </>
+            )}
+
+            {isPending && <LoadingState />}
+        </TabsContent>
+
+        <TabsContent value="seen">
+             <SeenVideosList videos={seenVideos} />
+        </TabsContent>
+      </Tabs>
     </>
   );
 }
-
-    

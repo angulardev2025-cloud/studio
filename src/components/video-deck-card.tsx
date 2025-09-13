@@ -16,23 +16,20 @@ import 'swiper/css';
 import 'swiper/css/effect-cards';
 import 'swiper/css/navigation';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from './ui/scroll-area';
-
-const READ_VIDEOS_KEY = 'readVideos';
 
 const SeenVideoCard = ({ video, index }: { video: VideoData; index: number }) => (
     <div className="flex items-start gap-4 p-4 border-b">
         <span className="text-lg font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
         <div className="flex-grow">
             <Link href={video.shareLink} target="_blank" rel="noopener noreferrer">
-                <Image
+                {video.thumbnailUrl && <Image
                     src={video.thumbnailUrl}
                     alt={video.title}
                     width={120}
                     height={68}
                     className="rounded-md object-cover aspect-video float-right ml-4"
-                />
+                />}
                 <p className="font-semibold line-clamp-2 hover:text-primary">{video.title}</p>
                 <p className="text-xs text-muted-foreground mt-1">{video.uploader}</p>
                 <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(video.publishedAt), { addSuffix: true })}</p>
@@ -42,30 +39,14 @@ const SeenVideoCard = ({ video, index }: { video: VideoData; index: number }) =>
 )
 
 
-const DeckSwiperSlide = ({ video, index, isVisible, markAsRead }: { video: VideoData; index: number, isVisible: boolean, markAsRead: (id: string) => void }) => {
-    const [isRead, setIsRead] = useState(false);
-
-    useEffect(() => {
-        // Check initial read state from localStorage
-        try {
-            const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
-            if (readVideos.includes(video.id)) {
-                setIsRead(true);
-            }
-        } catch (e) {
-            console.error('Failed to parse read videos from localStorage', e);
-        }
-    }, [video.id]);
+const DeckSwiperSlide = ({ video, index, isRead, onView }: { video: VideoData; index: number, isRead: boolean, onView: (id: string) => void }) => {
     
     useEffect(() => {
-        if (isVisible) {
-            const timer = setTimeout(() => {
-                markAsRead(video.id);
-                setIsRead(true);
-            }, 1000); // Mark as read after 1 second of being visible
-            return () => clearTimeout(timer);
+        const slideElement = document.querySelector(`[data-videoid="${video.id}"]`);
+        if (slideElement && isRead) {
+            slideElement.classList.add('fade-out');
         }
-    }, [isVisible, video.id, markAsRead]);
+    }, [isRead, video.id]);
     
     const publishedAtDate = new Date(video.publishedAt);
     return (
@@ -75,7 +56,7 @@ const DeckSwiperSlide = ({ video, index, isVisible, markAsRead }: { video: Video
                     <span className="text-3xl sm:text-4xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
                      <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" asChild>
-                            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={() => markAsRead(video.id)}>
+                            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={() => onView(video.id)}>
                                 <Share2 />
                             </Link>
                         </Button>
@@ -83,7 +64,7 @@ const DeckSwiperSlide = ({ video, index, isVisible, markAsRead }: { video: Video
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col gap-4 p-4 sm:p-6 pt-0">
                      <div className="w-full aspect-video relative shrink-0 overflow-hidden rounded-lg">
-                        <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block w-full h-full" onClick={() => markAsRead(video.id)}>
+                        <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block w-full h-full" onClick={() => onView(video.id)}>
                             {isRead && (
                                 <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
                             )}
@@ -110,7 +91,7 @@ const DeckSwiperSlide = ({ video, index, isVisible, markAsRead }: { video: Video
                     </div>
                     <div className="flex-grow flex flex-col">
                         <CardTitle className="font-headline text-lg sm:text-xl font-semibold tracking-tight line-clamp-3 mb-2">
-                            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary" onClick={() => markAsRead(video.id)}>
+                            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary" onClick={() => onView(video.id)}>
                                 {video.title}
                             </Link>
                         </CardTitle>
@@ -129,60 +110,19 @@ const DeckSwiperSlide = ({ video, index, isVisible, markAsRead }: { video: Video
 }
 
 type VideoDeckCardProps = {
-    videos: VideoData[]
+    unseenVideos: VideoData[];
+    seenVideos: VideoData[];
+    onView: (videoId: string) => void;
+    readVideoIds: Set<string>;
 }
 
-export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
+export default function VideoDeckCard({ unseenVideos, seenVideos, onView, readVideoIds }: VideoDeckCardProps) {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [unseenVideos, setUnseenVideos] = useState<VideoData[]>([]);
-  const [seenVideos, setSeenVideos] = useState<VideoData[]>([]);
-  const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
-
+  
   useEffect(() => {
-    try {
-      const storedReadIds: string[] = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
-      const readIdsSet = new Set(storedReadIds);
-      setReadVideoIds(readIdsSet);
-
-      const initialUnseen = videos.filter(v => !readIdsSet.has(v.id));
-      const initialSeen = videos.filter(v => readIdsSet.has(v.id));
-      
-      setUnseenVideos(initialUnseen);
-      setSeenVideos(initialSeen.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()));
-
-    } catch (e) {
-      console.error('Failed to process video lists from localStorage', e);
-      setUnseenVideos(videos);
-    }
-  }, [videos]);
-
-
-  const markAsRead = useCallback((videoId: string) => {
-    if (readVideoIds.has(videoId)) return;
-    
-    const newReadIds = new Set(readVideoIds).add(videoId);
-    setReadVideoIds(newReadIds);
-    localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
-
-    const slideEl = swiper?.slides.find(slide => slide.dataset.videoid === videoId);
-    if(slideEl) {
-        slideEl.classList.add('fade-out');
-    }
-
-    setTimeout(() => {
-      const videoToMove = unseenVideos.find(v => v.id === videoId);
-      if (videoToMove) {
-          setUnseenVideos(prev => prev.filter(v => v.id !== videoId));
-          setSeenVideos(prev => [videoToMove, ...prev].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()));
-      }
-      if(slideEl) {
-          slideEl.classList.remove('fade-out');
-      }
-      // After moving the video, we might need to re-render or update swiper
-      swiper?.update();
-    }, 500); // Match animation duration
-  }, [readVideoIds, swiper, unseenVideos]);
+    swiper?.update();
+  }, [unseenVideos, swiper]);
 
   const handleSlideChange = (swiperInstance: SwiperClass) => {
     setActiveIndex(swiperInstance.activeIndex);
@@ -191,7 +131,7 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
     if (videoId) {
       // Delay marking as read slightly to feel natural
       const timer = setTimeout(() => {
-        markAsRead(videoId);
+        onView(videoId);
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -209,76 +149,70 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
                 to { opacity: 0; transform: scale(0.95); }
             }
         `}</style>
-       <Tabs defaultValue="tosee" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="tosee">To See ({unseenVideos.length})</TabsTrigger>
-                <TabsTrigger value="seen">Already Seen ({seenVideos.length})</TabsTrigger>
-            </TabsList>
-            <TabsContent value="tosee">
-                 {unseenVideos.length > 0 ? (
-                    <>
-                        <div className="text-center text-sm text-muted-foreground my-2">
-                            {activeIndex + 1} / {unseenVideos.length}
-                        </div>
-                        <Swiper
-                            effect={'cards'}
-                            grabCursor={true}
-                            modules={[EffectCards, Navigation]}
-                            className="w-full h-[550px] sm:h-[600px]"
-                            cardsEffect={{
-                            perSlideOffset: 10,
-                            perSlideRotate: 3,
-                            slideShadows: true,
-                            }}
-                            navigation={{
-                                nextEl: '.swiper-button-next',
-                                prevEl: '.swiper-button-prev',
-                            }}
-                            onSwiper={setSwiper}
-                            onSlideChange={handleSlideChange}
-                        >
-                            {unseenVideos.map((video, index) => (
-                                <DeckSwiperSlide 
-                                    video={video} 
-                                    index={index} 
-                                    key={video.id} 
-                                    isVisible={index === activeIndex} 
-                                    markAsRead={markAsRead}
-                                />
-                            ))}
-                        </Swiper>
-                        <div className="flex justify-center items-center gap-4 mt-6">
-                            <Button className="swiper-button-prev p-2 rounded-full h-12 w-12" variant="outline" size="icon" disabled={unseenVideos.length < 2}>
-                            <ArrowUp className="h-6 w-6" />
-                            </Button>
-                            <Button className="swiper-button-next p-2 rounded-full h-12 w-12" variant="outline" size="icon" disabled={unseenVideos.length < 2}>
-                            <ArrowDown className="h-6 w-6" />
-                            </Button>
-                        </div>
-                    </>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-[550px] text-center">
-                        <h3 className="text-xl font-semibold">All Caught Up!</h3>
-                        <p className="text-muted-foreground">You've seen all the available videos.</p>
-                    </div>
-                )}
-            </TabsContent>
-            <TabsContent value="seen">
-                <Card className="mt-4 h-[670px]">
-                    <ScrollArea className="h-full">
-                         {seenVideos.length > 0 ? (
-                            seenVideos.map((video, index) => <SeenVideoCard key={video.id} video={video} index={index} />)
-                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-center">
-                                <h3 className="text-xl font-semibold">Nothing Here Yet</h3>
-                                <p className="text-muted-foreground">Viewed videos will appear here.</p>
-                            </div>
-                         )}
-                    </ScrollArea>
-                </Card>
-            </TabsContent>
-        </Tabs>
+         {unseenVideos.length > 0 ? (
+            <>
+                <div className="text-center text-sm text-muted-foreground my-2">
+                    {activeIndex + 1} / {unseenVideos.length}
+                </div>
+                <Swiper
+                    effect={'cards'}
+                    grabCursor={true}
+                    modules={[EffectCards, Navigation]}
+                    className="w-full h-[550px] sm:h-[600px]"
+                    cardsEffect={{
+                    perSlideOffset: 10,
+                    perSlideRotate: 3,
+                    slideShadows: true,
+                    }}
+                    navigation={{
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    }}
+                    onSwiper={setSwiper}
+                    onSlideChange={handleSlideChange}
+                    key={unseenVideos.length} // Force re-render when unseen videos change
+                >
+                    {unseenVideos.map((video, index) => (
+                        <DeckSwiperSlide 
+                            video={video} 
+                            index={index} 
+                            key={video.id} 
+                            isRead={readVideoIds.has(video.id)} 
+                            onView={onView}
+                        />
+                    ))}
+                </Swiper>
+                <div className="flex justify-center items-center gap-4 mt-6">
+                    <Button className="swiper-button-prev p-2 rounded-full h-12 w-12" variant="outline" size="icon" disabled={unseenVideos.length < 2}>
+                    <ArrowUp className="h-6 w-6" />
+                    </Button>
+                    <Button className="swiper-button-next p-2 rounded-full h-12 w-12" variant="outline" size="icon" disabled={unseenVideos.length < 2}>
+                    <ArrowDown className="h-6 w-6" />
+                    </Button>
+                </div>
+            </>
+        ) : (
+            <div className="flex flex-col items-center justify-center h-[550px] text-center">
+                <h3 className="text-xl font-semibold">All Caught Up!</h3>
+                <p className="text-muted-foreground">You've seen all the available videos.</p>
+            </div>
+        )}
     </div>
   );
 }
 
+
+export const SeenVideosList = ({ videos }: { videos: VideoData[] }) => (
+    <Card className="mt-4 h-[670px]">
+        <ScrollArea className="h-full">
+                {videos.length > 0 ? (
+                videos.map((video, index) => <SeenVideoCard key={video.id} video={video} index={index} />)
+                ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4">
+                    <h3 className="text-xl font-semibold">Nothing Here Yet</h3>
+                    <p className="text-muted-foreground">Viewed videos will appear here.</p>
+                </div>
+                )}
+        </ScrollArea>
+    </Card>
+);
