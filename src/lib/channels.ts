@@ -16,4 +16,22 @@ export const channelUrls = [
   'https://www.youtube.com/channel/UCmJlSkSkgdXama3GSUgMC4g', // Trakin Tech Tamil Official
   'https://www.youtube.com/channel/UCb-xXZ7ltTvrh9C6DgB9H-Q', // Prasad Tech in Telugu
   'https://www.youtube.com/channel/UC1tVU8H153ZFO9eRsxdJlhA', // Technology Gyan
+  'https://www.youtube.com/c/DrBro',
+  'https://www.youtube.com/c/RekhaAduge',
+  'https://www.youtube.com/c/RajaniAduge',
+  'https://www.youtube.com/c/TanuSwayamAduge',
+  'https://www.youtube.com/c/SimplellagiOnduAduge',
+  'https://www.youtube.com/c/ShrideviVlogs',
+  'https://www.youtube.com/c/DanishSait',
+  'https://www.youtube.com/c/ShrutiPrakash',
+  'https://www.youtube.com/c/TasteWithIbrahim',
+  'https://www.youtube.com/c/SujathaKS',
+  'https://www.youtube.com/c/KannadaTechForYou',
+  'https://www.youtube.com/c/GaneshKaranth',
+  'https://www.youtube.com/c/DrJagdishChatur',
+  'https://www.youtube.com/c/VismayaKannadaVK',
+  'https://www.youtube.com/c/KannadaDolu',
+  'https://www.youtube.com/c/RakazoneGaming',
+  'https://www.youtube.com/c/JagdishChaturvedi',
+  'https://www.youtube.com/c/TanuAdugeSpecial',
 ];
