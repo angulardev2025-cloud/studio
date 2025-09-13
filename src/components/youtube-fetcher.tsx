@@ -53,7 +53,7 @@ function AnimatedCounter({ value }: { value: number }) {
 
 function LoadingState() {
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {[...Array(INITIAL_LOAD_COUNT)].map((_, i) => (
         <div key={i} className="flex flex-col space-y-3">
           <Skeleton className="h-[200px] w-full rounded-xl" />
@@ -150,10 +150,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [loadingAction, setLoadingAction] = useState<'online' | 'offline' | null>(null);
 
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
-  const [unseenVideos, setUnseenVideos] = useState<VideoData[]>([]);
-  const [seenVideos, setSeenVideos] = useState<VideoData[]>([]);
-
-
+  
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -188,8 +185,8 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     setState(initialState);
   }, [initialState]);
 
-  useEffect(() => {
-    if (!state.data) return;
+  const {unseenVideos, seenVideos} = useMemo(() => {
+    if (!state.data) return { unseenVideos: [], seenVideos: [] };
 
     const filtered = state.data.filter(video => {
       const matchesChannel = selectedChannel === 'all' || video.uploader === selectedChannel;
@@ -199,24 +196,25 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       return matchesChannel && matchesSearch;
     });
 
-    const initialUnseen = filtered.filter(v => !readVideoIds.has(v.id));
-    const initialSeen = filtered.filter(v => readVideoIds.has(v.id));
+    const unseen = filtered.filter(v => !readVideoIds.has(v.id));
+    const seen = filtered.filter(v => readVideoIds.has(v.id))
+      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
     
-    setUnseenVideos(initialUnseen);
-    setSeenVideos(initialSeen.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()));
-    setVisibleCount(INITIAL_LOAD_COUNT);
-
+    return { unseenVideos: unseen, seenVideos: seen };
   }, [state.data, searchTerm, selectedChannel, readVideoIds]);
 
 
   const markAsRead = useCallback((videoId: string) => {
-    if (readVideoIds.has(videoId)) return;
-
-    const newReadIds = new Set(readVideoIds);
-    newReadIds.add(videoId);
-    setReadVideoIds(newReadIds);
-    localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
-  }, [readVideoIds]);
+     setReadVideoIds(prevReadIds => {
+      if (prevReadIds.has(videoId)) {
+        return prevReadIds;
+      }
+      const newReadIds = new Set(prevReadIds);
+      newReadIds.add(videoId);
+      localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
+      return newReadIds;
+    });
+  }, []);
 
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
@@ -407,7 +405,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 <>
                 <JsonViewer data={unseenVideos} />
                 {viewMode === 'grid' ? (
-                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleUnseenVideos.map((video, index) => (
                         <VideoCard key={video.id} video={video} index={index} isRead={readVideoIds.has(video.id)} onView={markAsRead} />
                     ))}
