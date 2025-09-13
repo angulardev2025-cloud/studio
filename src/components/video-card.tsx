@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -14,17 +14,34 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { summarizeDescription } from '@/ai/flows/summarize-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Badge } from './ui/badge';
 
 type VideoCardProps = {
   video: VideoData;
 };
+
+const READ_VIDEOS_KEY = 'readVideos';
 
 export default function VideoCard({ video }: VideoCardProps) {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRead, setIsRead] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if the video is marked as read in localStorage
+    try {
+      const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
+      if (readVideos.includes(video.id)) {
+        setIsRead(true);
+      }
+    } catch (e) {
+      console.error('Failed to parse read videos from localStorage', e);
+    }
+  }, [video.id]);
+
 
   const publishedAtDate = new Date(video.publishedAt);
 
@@ -65,9 +82,27 @@ export default function VideoCard({ video }: VideoCardProps) {
     }
   }
 
+  const handleMarkAsRead = () => {
+    if (isRead) return;
+    try {
+      const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
+      if (!readVideos.includes(video.id)) {
+        const updatedReadVideos = [...readVideos, video.id];
+        localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(updatedReadVideos));
+        setIsRead(true);
+      }
+    } catch (e) {
+      console.error('Failed to save read video status to localStorage', e);
+    }
+  };
+
+
   return (
     <Card className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl">
-      <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative">
+      <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative" onClick={handleMarkAsRead}>
+        {isRead && (
+            <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
+        )}
         {video.thumbnailUrl ? (
           <Image
             src={video.thumbnailUrl}
@@ -85,7 +120,7 @@ export default function VideoCard({ video }: VideoCardProps) {
        </Link>
       <CardHeader className="flex-grow p-4">
         <CardTitle className="font-headline text-base font-bold leading-tight">
-          <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary">
+          <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary" onClick={handleMarkAsRead}>
             {video.title}
           </Link>
         </CardTitle>
@@ -137,7 +172,7 @@ export default function VideoCard({ video }: VideoCardProps) {
             </Dialog>
             */}
             <Button variant="ghost" size="icon" asChild>
-              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video">
+              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={handleMarkAsRead}>
                 <Share2 />
               </Link>
             </Button>
