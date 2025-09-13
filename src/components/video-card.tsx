@@ -29,40 +29,6 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Set up Intersection Observer
-    if (isRead || !cardRef.current) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          onView(video.id);
-          // We can disconnect the observer after the card has been viewed once
-          if (cardRef.current) {
-            observer.unobserve(cardRef.current);
-          }
-        }
-      },
-      {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.5, // Mark as read when 50% of the card is visible
-      }
-    );
-
-    observer.observe(cardRef.current);
-
-    // Cleanup observer on component unmount
-    return () => {
-      if (cardRef.current) {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        observer.unobserve(cardRef.current);
-      }
-    };
-  }, [video.id, isRead, onView]);
-
 
   const publishedAtDate = new Date(video.publishedAt);
 
@@ -103,9 +69,13 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
     }
   }
 
+  const handleView = () => {
+    onView(video.id);
+  }
+
   return (
-    <Card ref={cardRef} className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl">
-      <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative" onClick={() => onView(video.id)}>
+    <Card className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl">
+      <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative" onClick={handleView}>
         {isRead && (
             <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
         )}
@@ -133,7 +103,7 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
         <span className="text-3xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
         <div className="flex flex-col">
             <CardTitle className="font-headline text-base font-bold leading-tight">
-            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary" onClick={() => onView(video.id)}>
+            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary" onClick={handleView}>
                 {video.title}
             </Link>
             </CardTitle>
@@ -155,7 +125,7 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
           </time>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" asChild>
-              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={() => onView(video.id)}>
+              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={handleView}>
                 <Share2 />
               </Link>
             </Button>
