@@ -5,7 +5,7 @@ import { useState, useTransition, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Sparkles, Share2, Loader2, Eye } from 'lucide-react';
+import { Sparkles, Share2, Loader2, Eye, Circle } from 'lucide-react';
 
 import type { VideoData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,11 +18,12 @@ import { Badge } from './ui/badge';
 
 type VideoCardProps = {
   video: VideoData;
+  index: number;
 };
 
 const READ_VIDEOS_KEY = 'readVideos';
 
-export default function VideoCard({ video }: VideoCardProps) {
+export default function VideoCard({ video, index }: VideoCardProps) {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -138,7 +139,7 @@ export default function VideoCard({ video }: VideoCardProps) {
             alt={video.title}
             fill
             className="object-cover"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             data-ai-hint="youtube thumbnail"
           />
         ) : (
@@ -152,15 +153,18 @@ export default function VideoCard({ video }: VideoCardProps) {
             </div>
         )}
        </Link>
-      <CardHeader className="flex-grow p-4">
-        <CardTitle className="font-headline text-base font-bold leading-tight">
-          <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary">
-            {video.title}
-          </Link>
-        </CardTitle>
-        <CardDescription className="pt-2 text-xs">
-          {video.uploader}
-        </CardDescription>
+      <CardHeader className="flex-row items-center gap-4 flex-grow p-4">
+        <span className="text-3xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
+        <div className="flex flex-col">
+            <CardTitle className="font-headline text-base font-bold leading-tight">
+            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="line-clamp-2 hover:text-primary">
+                {video.title}
+            </Link>
+            </CardTitle>
+            <CardDescription className="pt-2 text-xs">
+            {video.uploader}
+            </CardDescription>
+        </div>
       </CardHeader>
       {video.description && (
         <CardContent className="p-4 pt-0">
@@ -174,37 +178,6 @@ export default function VideoCard({ video }: VideoCardProps) {
             {formatDistanceToNow(publishedAtDate, { addSuffix: true })}
           </time>
           <div className="flex items-center gap-1">
-            {/*
-             <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Summarize video">
-                  <Sparkles />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>AI Summary</DialogTitle>
-                  <DialogDescription asChild>
-                     <div className="pt-4 space-y-4">
-                        {isPending && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Loader2 className="animate-spin" />
-                            <span>Generating summary...</span>
-                          </div>
-                        )}
-                        {error && (
-                            <Alert variant="destructive">
-                                <AlertTitle>Error</AlertTitle>
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
-                        {!isPending && summary && <p>{summary}</p>}
-                     </div>
-                  </DialogDescription>
-                </DialogHeader>
-              </DialogContent>
-            </Dialog>
-            */}
             <Button variant="ghost" size="icon" asChild>
               <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video">
                 <Share2 />

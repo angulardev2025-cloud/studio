@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useCallback, useTransition } from 'react';
@@ -379,9 +380,9 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         <>
           <JsonViewer data={filteredVideos} />
           {viewMode === 'grid' ? (
-            <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {videosForCurrentView.map((video) => (
-                <VideoCard key={video.id} video={video} />
+             <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {videosForCurrentView.map((video, index) => (
+                <VideoCard key={video.id} video={video} index={index} />
               ))}
             </div>
           ) : (
