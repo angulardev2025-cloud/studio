@@ -5,7 +5,7 @@ import { useState, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Sparkles, Share2, Loader2 } from 'lucide-react';
+import { Sparkles, Share2, Loader2, Eye } from 'lucide-react';
 
 import type { VideoData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -116,6 +116,11 @@ export default function VideoCard({ video }: VideoCardProps) {
           <div className="flex h-full w-full items-center justify-center bg-secondary">
             <p className="text-muted-foreground">No thumbnail</p>
           </div>
+        )}
+        {isRead && (
+            <div className="absolute bottom-2 right-2 z-10 bg-black/60 p-1 rounded-full backdrop-blur-sm">
+                <Eye className="h-4 w-4 text-white" />
+            </div>
         )}
        </Link>
       <CardHeader className="flex-grow p-4">
