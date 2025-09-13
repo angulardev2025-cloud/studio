@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, useTransition } from 'react';
+import { useEffect, useState, useMemo, useCallback, useTransition, useRef } from 'react';
 import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
@@ -53,7 +53,7 @@ function AnimatedCounter({ value }: { value: number }) {
 
 function LoadingState() {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {[...Array(INITIAL_LOAD_COUNT)].map((_, i) => (
         <div key={i} className="flex flex-col space-y-3">
           <Skeleton className="h-[200px] w-full rounded-xl" />
@@ -148,6 +148,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<'online' | 'offline' | null>(null);
+  const [activeTab, setActiveTab] = useState('tosee');
 
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
   
@@ -212,9 +213,14 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       const newReadIds = new Set(prevReadIds);
       newReadIds.add(videoId);
       localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
+
+      if (unseenVideos.length === 1 && unseenVideos[0].id === videoId) {
+        setActiveTab('seen');
+      }
+
       return newReadIds;
     });
-  }, []);
+  }, [unseenVideos]);
 
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
@@ -368,7 +374,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         </div>
       </div>
       
-      <Tabs defaultValue="tosee" className="w-full mt-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
         <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="tosee">To See ({unseenVideos.length})</TabsTrigger>
             <TabsTrigger value="seen">Already Seen ({seenVideos.length})</TabsTrigger>
@@ -405,7 +411,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 <>
                 <JsonViewer data={unseenVideos} />
                 {viewMode === 'grid' ? (
-                    <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleUnseenVideos.map((video, index) => (
                         <VideoCard key={video.id} video={video} index={index} isRead={readVideoIds.has(video.id)} onView={markAsRead} />
                     ))}
