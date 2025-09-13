@@ -192,6 +192,9 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
   if (offline) {
     try {
       const offlineVideos = await fetchOfflineData();
+       if (offlineVideos.length === 0) {
+        return { data: null, error: 'Offline data file not found or is empty. Please run "Fetch Videos" to create it.', message: null };
+      }
        const sortedVideos = offlineVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
        return { data: sortedVideos, error: null, message: `Successfully loaded ${sortedVideos.length} videos from local data.` };
     } catch (err) {

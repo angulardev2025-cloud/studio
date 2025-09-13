@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { ThemeProviderV2 } from '@/components/theme-provider';
 import { Inter } from 'next/font/google';
 import Link from 'next/link';
+import ScrollToTopButton from '@/components/scroll-to-top';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <ScrollToTopButton />
           <Toaster />
         </ThemeProviderV2>
       </body>
