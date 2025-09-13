@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,11 +10,11 @@ import type { VideoData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, EffectCards } from 'swiper/modules';
+import type { Swiper as SwiperClass } from 'swiper';
+import { Navigation, EffectCards } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 import 'swiper/css/navigation';
-import 'swiper/css/pagination';
 import { Badge } from './ui/badge';
 
 type VideoDeckCardProps = {
@@ -23,10 +23,25 @@ type VideoDeckCardProps = {
 
 const READ_VIDEOS_KEY = 'readVideos';
 
-const DeckSwiperSlide = ({ video, index }: { video: VideoData; index: number }) => {
+const DeckSwiperSlide = ({ video, index, isVisible }: { video: VideoData; index: number, isVisible: boolean }) => {
     const [isRead, setIsRead] = useState(false);
     
+    const markAsRead = useCallback(() => {
+        if (isRead) return;
+        try {
+            const readVideos: string[] = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
+            if (!readVideos.includes(video.id)) {
+                const updatedReadVideos = [...readVideos, video.id];
+                localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(updatedReadVideos));
+                setIsRead(true);
+            }
+        } catch (e) {
+            console.error('Failed to save read video status to localStorage', e);
+        }
+    }, [video.id, isRead]);
+
     useEffect(() => {
+        // Check initial read state from localStorage
         try {
             const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
             if (readVideos.includes(video.id)) {
@@ -36,20 +51,16 @@ const DeckSwiperSlide = ({ video, index }: { video: VideoData; index: number }) 
             console.error('Failed to parse read videos from localStorage', e);
         }
     }, [video.id]);
-
-    const handleMarkAsRead = () => {
-        if (isRead) return;
-        try {
-            const readVideos = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
-            if (!readVideos.includes(video.id)) {
-                const updatedReadVideos = [...readVideos, video.id];
-                localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(updatedReadVideos));
-                setIsRead(true);
-            }
-        } catch (e) {
-            console.error('Failed to save read video status to localStorage', e);
+    
+    useEffect(() => {
+        if (isVisible) {
+            // Delay marking as read slightly to feel natural
+            const timer = setTimeout(() => {
+                markAsRead();
+            }, 500);
+            return () => clearTimeout(timer);
         }
-    };
+    }, [isVisible, markAsRead]);
     
     const publishedAtDate = new Date(video.publishedAt);
     return (
@@ -60,7 +71,7 @@ const DeckSwiperSlide = ({ video, index }: { video: VideoData; index: number }) 
                         <span className="text-3xl sm:text-4xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
                          <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" asChild>
-                                <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={handleMarkAsRead}>
+                                <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={markAsRead}>
                                     <Share2 />
                                 </Link>
                             </Button>
@@ -69,7 +80,7 @@ const DeckSwiperSlide = ({ video, index }: { video: VideoData; index: number }) 
                 </CardHeader>
                 <CardContent className="flex-grow flex flex-col gap-4 p-4 sm:p-6 pt-0">
                      <div className="w-full aspect-video relative shrink-0 overflow-hidden rounded-lg">
-                        <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block w-full h-full" onClick={handleMarkAsRead}>
+                        <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block w-full h-full" onClick={markAsRead}>
                             {isRead && (
                                 <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
                             )}
@@ -91,7 +102,7 @@ const DeckSwiperSlide = ({ video, index }: { video: VideoData; index: number }) 
                     </div>
                     <div className="flex-grow flex flex-col">
                         <CardTitle className="font-headline text-lg sm:text-xl font-semibold tracking-tight line-clamp-3 mb-2">
-                            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary" onClick={handleMarkAsRead}>
+                            <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary" onClick={markAsRead}>
                                 {video.title}
                             </Link>
                         </CardTitle>
@@ -110,6 +121,12 @@ const DeckSwiperSlide = ({ video, index }: { video: VideoData; index: number }) 
 }
 
 export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const handleSlideChange = (swiper: SwiperClass) => {
+    setActiveIndex(swiper.activeIndex);
+  };
+
   return (
     <div className="relative w-full max-w-md mx-auto">
       <Swiper
@@ -126,9 +143,15 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
             nextEl: '.swiper-button-next',
             prevEl: '.swiper-button-prev',
         }}
+        onSlideChange={handleSlideChange}
       >
         {videos.map((video, index) => (
-           <DeckSwiperSlide video={video} index={index} key={video.id} />
+           <DeckSwiperSlide 
+              video={video} 
+              index={index} 
+              key={video.id} 
+              isVisible={index === activeIndex} 
+            />
         ))}
       </Swiper>
       <div className="flex justify-center items-center gap-4 mt-6">
