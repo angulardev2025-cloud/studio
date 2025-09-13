@@ -7,6 +7,7 @@ export default async function Home({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const offline = searchParams.offline === 'true';
+  // Add a delay to simulate loading
   const initialState = await fetchYouTubeFeed({ offline });
 
   return (

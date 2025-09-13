@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useTransition } from 'react';
 import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
@@ -13,7 +13,7 @@ import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import VideoDeckCard from './video-deck-card';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -143,7 +143,11 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
   const [hitCount, setHitCount] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
+  const [isPending, startTransition] = useTransition();
+  const [loadingAction, setLoadingAction] = useState<'online' | 'offline' | null>(null);
+
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const getISTDateString = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -168,12 +172,37 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     } catch (error) {
       console.error('Could not read/write to localStorage:', error);
     }
-  }, []);
+    
+    // Update state when initialState changes
+    setState(initialState);
+  }, [initialState]);
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
-    const url = options.offline ? '/?offline=true' : '/';
-    router.push(url);
+    const action = options.offline ? 'offline' : 'online';
+    setLoadingAction(action);
+    startTransition(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (options.offline) {
+            params.set('offline', 'true');
+        } else {
+            params.delete('offline');
+        }
+        router.push(`?${params.toString()}`);
+        // The page will re-render with new server-side props,
+        // so we don't need to manually call router.refresh() or reset loading state here.
+    });
   }, [router]);
+
+  // Reset loading state if the component is still mounted after navigation
+  useEffect(() => {
+      const isOffline = searchParams.get('offline') === 'true';
+      if (isOffline && loadingAction === 'offline') {
+          setLoadingAction(null);
+      } else if (!isOffline && loadingAction === 'online') {
+          setLoadingAction(null);
+      }
+  }, [searchParams, loadingAction]);
+
 
   const handleReload = () => {
     window.location.reload();
@@ -217,20 +246,20 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
-                <Button onClick={() => loadFeed()}>
-                  <Youtube className="mr-2" />
-                  Fetch Videos
+                <Button onClick={() => loadFeed()} disabled={isPending} className="bg-green-600 hover:bg-green-700 text-white">
+                  {loadingAction === 'online' ? <Loader2 className="mr-2 animate-spin" /> : <Youtube className="mr-2" />}
+                  {loadingAction === 'online' ? 'Fetching...' : 'Fetch Videos'}
                 </Button>
-                <Button onClick={() => loadFeed({ offline: true })} variant="outline">
-                    <WifiOff />
-                    Offline Mode
+                <Button onClick={() => loadFeed({ offline: true })} disabled={isPending} variant="outline" className="text-white border-blue-500 bg-blue-600 hover:bg-blue-700 hover:text-white">
+                    {loadingAction === 'offline' ? <Loader2 className="mr-2 animate-spin" /> : <WifiOff />}
+                    {loadingAction === 'offline' ? 'Loading...' : 'Offline Mode'}
                 </Button>
                 <Button onClick={handleReload} variant="outline">
                     <CloudCog />
                     Load Latest App
                 </Button>
-                <Button onClick={() => loadFeed()} variant="outline" size="icon">
-                    <RefreshCw />
+                <Button onClick={() => loadFeed()} variant="outline" size="icon" disabled={isPending}>
+                    {isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
                 </Button>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -244,6 +273,25 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 </div>
             </div>
         </div>
+
+        {isPending && loadingAction === 'online' && (
+            <Alert className="mt-4 bg-secondary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertTitle>Fetching Videos</AlertTitle>
+                <AlertDescription>
+                Please wait a moment while we fetch the latest videos from online sources.
+                </AlertDescription>
+            </Alert>
+        )}
+        {isPending && loadingAction === 'offline' && (
+            <Alert className="mt-4 bg-secondary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertTitle>Loading Offline Data</AlertTitle>
+                <AlertDescription>
+                Please wait while we load the video data from your local cache.
+                </AlertDescription>
+            </Alert>
+        )}
 
         <div className="flex flex-col gap-4 md:flex-row">
             <div className="relative flex-grow">
@@ -301,7 +349,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         </div>
       </div>
 
-      {state.error && (
+      {state.error && !isPending && (
         <Alert variant="destructive" className="mt-8">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>An Error Occurred</AlertTitle>
@@ -314,7 +362,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         </Alert>
       )}
 
-      {!state.error && (!filteredVideos || filteredVideos.length === 0) && (
+      {!state.error && !isPending && (!filteredVideos || filteredVideos.length === 0) && (
          <Alert className="mt-8">
            <Youtube className="h-4 w-4" />
            <AlertTitle>No Videos Found</AlertTitle>
@@ -327,7 +375,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
          </Alert>
       )}
       
-      {videosForCurrentView && videosForCurrentView.length > 0 && (
+      {!isPending && videosForCurrentView && videosForCurrentView.length > 0 && (
         <>
           <JsonViewer data={filteredVideos} />
           {viewMode === 'grid' ? (
@@ -349,6 +397,8 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
           )}
         </>
       )}
+
+      {isPending && <LoadingState />}
     </>
   );
 }
