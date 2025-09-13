@@ -48,7 +48,7 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
       {
         root: null,
         rootMargin: '0px',
-        threshold: 0.1, // Mark as read when 10% of the card is visible
+        threshold: 0.5, // Mark as read when 50% of the card is visible
       }
     );
 
