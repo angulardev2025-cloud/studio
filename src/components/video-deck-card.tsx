@@ -128,6 +128,10 @@ const DeckSwiperSlide = ({ video, index, isVisible, markAsRead }: { video: Video
     )
 }
 
+type VideoDeckCardProps = {
+    videos: VideoData[]
+}
+
 export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -213,11 +217,14 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
             <TabsContent value="tosee">
                  {unseenVideos.length > 0 ? (
                     <>
+                        <div className="text-center text-sm text-muted-foreground my-2">
+                            {activeIndex + 1} / {unseenVideos.length}
+                        </div>
                         <Swiper
                             effect={'cards'}
                             grabCursor={true}
                             modules={[EffectCards, Navigation]}
-                            className="w-full h-[550px] sm:h-[600px] mt-4"
+                            className="w-full h-[550px] sm:h-[600px]"
                             cardsEffect={{
                             perSlideOffset: 10,
                             perSlideRotate: 3,
@@ -274,3 +281,4 @@ export default function VideoDeckCard({ videos }: VideoDeckCardProps) {
     </div>
   );
 }
+
