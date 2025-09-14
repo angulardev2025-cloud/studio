@@ -12,4 +12,7 @@ export type FetcherState = {
   data: VideoData[] | null;
   error: string | null;
   message: string | null;
+  hits: number;
 };
+
+    

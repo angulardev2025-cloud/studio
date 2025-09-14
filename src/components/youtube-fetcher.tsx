@@ -188,6 +188,17 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     if(initialState.data) {
         setAllVideos(initialState.data);
     }
+    if (initialState.hits && initialState.hits > 0) {
+      setHitCount(prev => {
+        const newTotal = prev + initialState.hits;
+        try {
+          localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: newTotal, date: getISTDateString() }));
+        } catch (error) {
+          console.error('Failed to write hits to localStorage', error);
+        }
+        return newTotal;
+      });
+    }
   }, [initialState]);
 
   const filteredVideos = useMemo(() => {
@@ -471,3 +482,5 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     </>
   );
 }
+
+    

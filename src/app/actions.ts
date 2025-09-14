@@ -81,7 +81,7 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 
 
 // Fetches all videos for a single channel playlist
-async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, apiKey: string): Promise<VideoData[]> {
+async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, apiKey: string, hits: { count: number }): Promise<VideoData[]> {
     const twoWeeksAgo = sub(new Date(), { weeks: 2 });
     let allVideoItems: any[] = [];
     let nextPageToken: string | undefined = undefined;
@@ -89,6 +89,7 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
 
     do {
         try {
+            hits.count++;
             const playlistData = await fetchApi('playlistItems', {
                 part: 'snippet',
                 playlistId: playlistId,
@@ -159,14 +160,14 @@ async function getOfflineFetcherState(): Promise<FetcherState> {
   try {
     const offlineVideos = await readOfflineData();
     if (offlineVideos.length === 0) {
-      return { data: null, error: 'Offline data file not found or is empty. Please run "Fetch Videos" to create it.', message: null };
+      return { data: null, error: 'Offline data file not found or is empty. Please run "Fetch Videos" to create it.', message: null, hits: 0 };
     }
     const sortedVideos = offlineVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-    return { data: sortedVideos, error: null, message: `Successfully loaded ${sortedVideos.length} videos from local data.` };
+    return { data: sortedVideos, error: null, message: `Successfully loaded ${sortedVideos.length} videos from local data.`, hits: 0 };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
     console.error("Error in offline mode:", errorMessage);
-    return { data: null, error: `Offline DataError: ${errorMessage}`, message: null };
+    return { data: null, error: `Offline DataError: ${errorMessage}`, message: null, hits: 0 };
   }
 }
 
@@ -177,13 +178,14 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
   }
 
   const apiKey = process.env.YT_API_KEY;
+  const hits = { count: 0 };
 
   if (!apiKey) {
-    return { data: null, error: 'YouTube API key (YT_API_KEY) is not configured in environment variables.', message: null };
+    return { data: null, error: 'YouTube API key (YT_API_KEY) is not configured in environment variables.', message: null, hits: hits.count };
   }
 
   if (!channelUrls || channelUrls.length === 0) {
-    return { data: [], error: null, message: 'No channels configured.' };
+    return { data: [], error: null, message: 'No channels configured.', hits: hits.count };
   }
 
   try {
@@ -210,6 +212,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
             idChunks.push(idsToFetch.slice(i, i + 50).join(','));
         }
         for (const chunk of idChunks) {
+            hits.count++;
             const data = await fetchApi('channels', { part: 'snippet,contentDetails', id: chunk, key: apiKey });
             data.items.forEach((item: any) => {
                 channelDetailsMap.set(item.id, {
@@ -227,6 +230,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
             usernameChunks.push(usernamesToFetch.slice(i, i + 50).join(','));
         }
         for (const chunk of usernameChunks) {
+            hits.count++;
             const data = await fetchApi('channels', { part: 'snippet,contentDetails', forUsername: chunk, key: apiKey });
             data.items.forEach((item: any) => {
                 channelDetailsMap.set(item.id, {
@@ -239,6 +243,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
 
     // Step 4: Fetch handles one by one using search (unfortunately, no batch endpoint for handles)
     for (const handle of handlesToFetch) {
+        hits.count++;
         const searchData = await fetchApi('search', {
             part: 'snippet',
             q: `@${handle}`,
@@ -250,6 +255,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
             const channelId = searchData.items[0].id.channelId;
             const channelTitle = searchData.items[0].snippet.title;
             // Now fetch contentDetails for the uploads playlist
+            hits.count++;
             const channelData = await fetchApi('channels', {
                 part: 'contentDetails',
                 id: channelId,
@@ -266,14 +272,14 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
 
     // Step 5: Fetch videos from all resolved playlists in parallel
     const playlistPromises = Array.from(channelDetailsMap.entries()).map(([channelId, details]) => 
-        fetchVideosForPlaylist(details.uploadsPlaylistId, details.title, apiKey)
+        fetchVideosForPlaylist(details.uploadsPlaylistId, details.title, apiKey, hits)
     );
 
     const allFetchedVideos = (await Promise.all(playlistPromises)).flat();
     
     if (allFetchedVideos.length === 0) {
         const existingData = await readOfflineData();
-        return { data: existingData, error: null, message: 'No new videos found in the last 2 weeks. Displaying cached data.' };
+        return { data: existingData, error: null, message: 'No new videos found in the last 2 weeks. Displaying cached data.', hits: hits.count };
     }
     
     // Step 6: Read existing offline data, merge, and write back
@@ -293,7 +299,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     // Step 7: Sort and return the final list for the current response
     const sortedVideos = allVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
-    return { data: sortedVideos, error: null, message: `Successfully fetched ${allFetchedVideos.length} new videos. Offline cache updated to ${allVideos.length} total videos.` };
+    return { data: sortedVideos, error: null, message: `Successfully fetched ${allFetchedVideos.length} new videos. Offline cache updated to ${allVideos.length} total videos.`, hits: hits.count };
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
@@ -307,12 +313,15 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
             return { 
                 ...offlineState,
                 error: `${errorMessage} Falling back to previously cached data.`,
+                 hits: hits.count,
             };
         }
         // If no offline data, it's a hard error
-        return { data: null, error: `API Error: ${errorMessage} and no offline data is available.`, message: null };
+        return { data: null, error: `API Error: ${errorMessage} and no offline data is available.`, message: null, hits: hits.count };
     }
 
-    return { data: null, error: `API Error: ${errorMessage}`, message: null };
+    return { data: null, error: `API Error: ${errorMessage}`, message: null, hits: hits.count };
   }
 }
+
+    
