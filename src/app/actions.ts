@@ -55,24 +55,24 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 
   const response = await fetch(url.toString(), { next: { revalidate: 3600 } }); // Cache for 1 hour
   if (!response.ok) {
+     if (response.status === 403) {
+      try {
+        const errorData = await response.json();
+        const reason = errorData.error?.errors?.[0]?.reason;
+        if (reason === 'quotaExceeded') {
+          throw new Error('The YouTube API daily quota has been exceeded. Please try again tomorrow.');
+        }
+      } catch (e) {
+        // If parsing the 403 error fails, fall through to the generic 403 message
+      }
+      throw new Error('Access to the YouTube API was denied. Please ensure your YT_API_KEY is correct and that the YouTube Data API v3 is enabled in your Google Cloud project.');
+    }
     try {
         const errorData = await response.json();
         console.error('YouTube API Error:', errorData);
-
-        if (response.status === 403) {
-            const reason = errorData.error?.errors?.[0]?.reason;
-            if (reason === 'quotaExceeded') {
-                throw new Error('The YouTube API daily quota has been exceeded. Please try again tomorrow.');
-            }
-            throw new Error('Access to the YouTube API was denied. Please ensure your YT_API_KEY is correct and that the YouTube Data API v3 is enabled in your Google Cloud project.');
-        }
-
         throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
-    } catch (e) {
-        if (e instanceof Error) {
-            throw e; // Re-throw known errors
-        }
-        // If parsing JSON fails or another error occurs, throw a generic error
+    } catch (jsonError) {
+        // If parsing JSON fails, throw a more generic error with the status text
         throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
     }
   }
@@ -80,113 +80,53 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 }
 
 
-// Fetches all videos for a single channel URL
-async function fetchVideosForChannel(channelUrl: string, apiKey: string): Promise<VideoData[]> {
-  const identifier = getChannelIdentifier(channelUrl);
-  if (!identifier) {
-    console.warn(`Could not identify channel from URL: ${channelUrl}`);
-    return [];
-  }
+// Fetches all videos for a single channel playlist
+async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, apiKey: string): Promise<VideoData[]> {
+    const twoWeeksAgo = sub(new Date(), { weeks: 2 });
+    let allVideoItems: any[] = [];
+    let nextPageToken: string | undefined = undefined;
+    let shouldStop = false;
 
-  let channelId: string | null = null;
-  let channelTitle = '';
+    do {
+        try {
+            const playlistData = await fetchApi('playlistItems', {
+                part: 'snippet',
+                playlistId: playlistId,
+                maxResults: '50',
+                pageToken: nextPageToken || '',
+                key: apiKey,
+            });
 
-  // Step 1: Resolve identifier to channel ID
-  if (identifier.type === 'id') {
-    channelId = identifier.id;
-  } else {
-    // This handles 'handle' and 'username' types
-    try {
-       const searchData = await fetchApi('search', {
-        part: 'snippet',
-        q: identifier.type === 'handle' ? `@${identifier.id}` : identifier.id,
-        type: 'channel',
-        maxResults: '1',
-        key: apiKey,
-      });
+            for (const item of playlistData.items) {
+                const publishedAt = new Date(item.snippet.publishedAt);
+                if (publishedAt < twoWeeksAgo) {
+                    shouldStop = true;
+                    break;
+                }
+                allVideoItems.push(item);
+            }
+            
+            if (shouldStop) break;
 
-      if (searchData.items?.length > 0) {
-        channelId = searchData.items[0].id.channelId;
-        channelTitle = searchData.items[0].snippet.title;
-      } else {
-         // Fallback for /c/ and /user/ which sometimes don't resolve well via search
-         const channelData = await fetchApi('channels', {
-            part: 'id,snippet',
-            forUsername: identifier.id,
-            key: apiKey,
-         });
-         if (channelData.items?.length > 0) {
-            channelId = channelData.items[0].id;
-            channelTitle = channelData.items[0].snippet.title;
-         }
-      }
-    } catch (e) {
-        console.error(`Failed to resolve channel for identifier: ${identifier.id}`, e);
-        return [];
-    }
-  }
+            nextPageToken = playlistData.nextPageToken;
+        } catch (error) {
+            console.error(`Error fetching playlist items for playlist ${playlistId}:`, error);
+            // Stop paginating for this playlist if an error occurs
+            break; 
+        }
+    } while (nextPageToken);
 
-  if (!channelId) {
-    console.warn(`Could not determine channel ID for: ${channelUrl}`);
-    return [];
-  }
-
-  // Step 2: Get the 'uploads' playlist ID from the channel
-  const channelData = await fetchApi('channels', {
-    part: 'contentDetails,snippet',
-    id: channelId,
-    key: apiKey,
-  });
-
-  if (!channelData.items || channelData.items.length === 0) {
-    console.warn(`Could not find channel details for ID: ${channelId}`);
-    return [];
-  }
-  const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads;
-  if (!channelTitle) channelTitle = channelData.items[0].snippet.title;
-
-  // Step 3: Paginate through the uploads playlist to get all video items
-  const twoWeeksAgo = sub(new Date(), { weeks: 2 });
-  let allVideoItems: any[] = [];
-  let nextPageToken: string | undefined = undefined;
-  let shouldStop = false;
-
-  do {
-    const playlistData = await fetchApi('playlistItems', {
-      part: 'snippet',
-      playlistId: uploadsPlaylistId,
-      maxResults: '50',
-      pageToken: nextPageToken || '',
-      key: apiKey,
-    });
-
-    for (const item of playlistData.items) {
-      const publishedAt = new Date(item.snippet.publishedAt);
-      if (publishedAt < twoWeeksAgo) {
-        shouldStop = true;
-        break;
-      }
-      allVideoItems.push(item);
-    }
-    
-    if (shouldStop) break;
-
-    nextPageToken = playlistData.nextPageToken;
-
-  } while (nextPageToken);
-
-  // Step 4: Format the data
-  return allVideoItems
-    .filter(item => item.snippet?.resourceId?.videoId)
-    .map((item: any) => ({
-      id: item.snippet.resourceId.videoId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      publishedAt: item.snippet.publishedAt,
-      thumbnailUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
-      uploader: channelTitle,
-      shareLink: `https://www.youtube.com/watch?v=${item.snippet.resourceId.videoId}`,
-    }));
+    return allVideoItems
+        .filter(item => item.snippet?.resourceId?.videoId)
+        .map((item: any) => ({
+            id: item.snippet.resourceId.videoId,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            publishedAt: item.snippet.publishedAt,
+            thumbnailUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+            uploader: channelTitle,
+            shareLink: `https://www.youtube.com/watch?v=${item.snippet.resourceId.videoId}`,
+        }));
 }
 
 async function readOfflineData(): Promise<VideoData[]> {
@@ -226,7 +166,7 @@ async function getOfflineFetcherState(): Promise<FetcherState> {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
     console.error("Error in offline mode:", errorMessage);
-    return { data: null, error: `Offline Data Error: ${errorMessage}`, message: null };
+    return { data: null, error: `Offline DataError: ${errorMessage}`, message: null };
   }
 }
 
@@ -247,22 +187,99 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
   }
 
   try {
-    // Fetch videos from all channels in parallel
-    const allFetchedVideos = (await Promise.all(
-      channelUrls.map(url => fetchVideosForChannel(url, apiKey))
-    )).flat();
+    // Step 1: Separate identifiers by type
+    const idsToFetch: string[] = [];
+    const usernamesToFetch: string[] = [];
+    const handlesToFetch: string[] = [];
+    
+    channelUrls.forEach(url => {
+        const identifier = getChannelIdentifier(url);
+        if (identifier) {
+            if (identifier.type === 'id') idsToFetch.push(identifier.id);
+            else if (identifier.type === 'username') usernamesToFetch.push(identifier.id);
+            else if (identifier.type === 'handle') handlesToFetch.push(identifier.id);
+        }
+    });
 
+    const channelDetailsMap = new Map<string, { title: string; uploadsPlaylistId: string }>();
+
+    // Step 2: Batch fetch for IDs
+    if (idsToFetch.length > 0) {
+        const idChunks = [];
+        for (let i = 0; i < idsToFetch.length; i += 50) {
+            idChunks.push(idsToFetch.slice(i, i + 50).join(','));
+        }
+        for (const chunk of idChunks) {
+            const data = await fetchApi('channels', { part: 'snippet,contentDetails', id: chunk, key: apiKey });
+            data.items.forEach((item: any) => {
+                channelDetailsMap.set(item.id, {
+                    title: item.snippet.title,
+                    uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+                });
+            });
+        }
+    }
+
+    // Step 3: Batch fetch for usernames (less efficient, but necessary)
+     if (usernamesToFetch.length > 0) {
+        const usernameChunks = [];
+        for (let i = 0; i < usernamesToFetch.length; i += 50) {
+            usernameChunks.push(usernamesToFetch.slice(i, i + 50).join(','));
+        }
+        for (const chunk of usernameChunks) {
+            const data = await fetchApi('channels', { part: 'snippet,contentDetails', forUsername: chunk, key: apiKey });
+            data.items.forEach((item: any) => {
+                channelDetailsMap.set(item.id, {
+                    title: item.snippet.title,
+                    uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+                });
+            });
+        }
+    }
+
+    // Step 4: Fetch handles one by one using search (unfortunately, no batch endpoint for handles)
+    for (const handle of handlesToFetch) {
+        const searchData = await fetchApi('search', {
+            part: 'snippet',
+            q: `@${handle}`,
+            type: 'channel',
+            maxResults: '1',
+            key: apiKey,
+        });
+        if (searchData.items?.length > 0) {
+            const channelId = searchData.items[0].id.channelId;
+            const channelTitle = searchData.items[0].snippet.title;
+            // Now fetch contentDetails for the uploads playlist
+            const channelData = await fetchApi('channels', {
+                part: 'contentDetails',
+                id: channelId,
+                key: apiKey
+            });
+            if (channelData.items?.length > 0) {
+                channelDetailsMap.set(channelId, {
+                    title: channelTitle,
+                    uploadsPlaylistId: channelData.items[0].contentDetails.relatedPlaylists.uploads,
+                });
+            }
+        }
+    }
+
+    // Step 5: Fetch videos from all resolved playlists in parallel
+    const playlistPromises = Array.from(channelDetailsMap.entries()).map(([channelId, details]) => 
+        fetchVideosForPlaylist(details.uploadsPlaylistId, details.title, apiKey)
+    );
+
+    const allFetchedVideos = (await Promise.all(playlistPromises)).flat();
+    
     if (allFetchedVideos.length === 0) {
-        return { data: [], error: null, message: 'No new videos found in the last 2 weeks.' };
+        const existingData = await readOfflineData();
+        return { data: existingData, error: null, message: 'No new videos found in the last 2 weeks. Displaying cached data.' };
     }
     
-    // Read existing offline data
+    // Step 6: Read existing offline data, merge, and write back
     const existingOfflineVideos = await readOfflineData();
-    
-    // Combine new and existing videos
     const combinedVideos = [...allFetchedVideos, ...existingOfflineVideos];
 
-    // Remove duplicates, keeping the first occurrence (which would be the newly fetched one if it exists)
     const uniqueVideosMap = new Map<string, VideoData>();
     for (const video of combinedVideos) {
         if (!uniqueVideosMap.has(video.id)) {
@@ -271,23 +288,10 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     }
     const allVideos = Array.from(uniqueVideosMap.values());
     
-    // Write the updated combined list back to the offline file
     await writeOfflineData(allVideos);
 
-    // Sort the final list for the current response
-    const [priorityChannelUrl] = channelUrls;
-    const priorityIdentifier = getChannelIdentifier(priorityChannelUrl);
-    
-    const sortedVideos = allVideos.sort((a, b) => {
-        // Prioritize videos from the first channel in the list
-        const aIsPriority = priorityIdentifier && a.uploader.includes(priorityIdentifier.id);
-        const bIsPriority = priorityIdentifier && b.uploader.includes(priorityIdentifier.id);
-        if (aIsPriority && !bIsPriority) return -1;
-        if (!aIsPriority && bIsPriority) return 1;
-        
-        // Then sort by date
-        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-    });
+    // Step 7: Sort and return the final list for the current response
+    const sortedVideos = allVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
     return { data: sortedVideos, error: null, message: `Successfully fetched ${allFetchedVideos.length} new videos. Offline cache updated to ${allVideos.length} total videos.` };
 
@@ -307,3 +311,6 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: null, error: `API Error: ${errorMessage}`, message: null };
   }
 }
+
+
+      
