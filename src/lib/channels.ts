@@ -37,4 +37,5 @@ export const channelUrls = [
   'https://youtube.com/@thepowerhousevines',
   'https://youtube.com/@vaisshnavistudios',
   'https://youtube.com/@royalchallengersbengaluruyt',
+  'https://youtube.com/@haylsworld',
 ];
