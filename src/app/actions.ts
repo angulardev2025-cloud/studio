@@ -98,13 +98,15 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
                 key: apiKey,
             });
 
-            for (const item of playlistData.items) {
-                const publishedAt = new Date(item.snippet.publishedAt);
-                if (publishedAt < twoWeeksAgo) {
-                    shouldStop = true;
-                    break;
-                }
-                allVideoItems.push(item);
+            if (playlistData.items) {
+              for (const item of playlistData.items) {
+                  const publishedAt = new Date(item.snippet.publishedAt);
+                  if (publishedAt < twoWeeksAgo) {
+                      shouldStop = true;
+                      break;
+                  }
+                  allVideoItems.push(item);
+              }
             }
             
             if (shouldStop) break;
@@ -214,12 +216,14 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
         for (const chunk of idChunks) {
             hits.count++;
             const data = await fetchApi('channels', { part: 'snippet,contentDetails', id: chunk, key: apiKey });
-            data.items.forEach((item: any) => {
-                channelDetailsMap.set(item.id, {
-                    title: item.snippet.title,
-                    uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+            if (data.items) {
+                data.items.forEach((item: any) => {
+                    channelDetailsMap.set(item.id, {
+                        title: item.snippet.title,
+                        uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+                    });
                 });
-            });
+            }
         }
     }
 
@@ -232,12 +236,14 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
         for (const chunk of usernameChunks) {
             hits.count++;
             const data = await fetchApi('channels', { part: 'snippet,contentDetails', forUsername: chunk, key: apiKey });
-            data.items.forEach((item: any) => {
-                channelDetailsMap.set(item.id, {
-                    title: item.snippet.title,
-                    uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+            if (data.items) {
+                data.items.forEach((item: any) => {
+                    channelDetailsMap.set(item.id, {
+                        title: item.snippet.title,
+                        uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+                    });
                 });
-            });
+            }
         }
     }
 
