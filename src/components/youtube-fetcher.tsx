@@ -25,6 +25,7 @@ const READ_VIDEOS_KEY = 'readVideos';
 
 function AnimatedCounter({ value }: { value: number }) {
   const [currentValue, setCurrentValue] = useState(0);
+  const prevValueRef = useRef(0);
 
   useEffect(() => {
     const animationDuration = 500; // ms
@@ -32,15 +33,19 @@ function AnimatedCounter({ value }: { value: number }) {
     const totalFrames = Math.round(animationDuration / frameDuration);
     let frame = 0;
 
+    const startValue = prevValueRef.current;
+    const diff = value - startValue;
+
     const counter = setInterval(() => {
       frame++;
       const progress = frame / totalFrames;
-      const newValue = Math.round(value * progress);
+      const newValue = startValue + Math.round(diff * progress);
       setCurrentValue(newValue);
 
       if (frame === totalFrames) {
         clearInterval(counter);
         setCurrentValue(value);
+        prevValueRef.current = value;
       }
     }, frameDuration);
 
@@ -170,6 +175,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         if (date === todayIST) {
           setHitCount(count);
         } else {
+          // Reset on new day
           localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
           setHitCount(0);
         }
@@ -213,8 +219,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     });
   }, [allVideos, searchTerm, selectedChannel]);
 
-  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>([]);
-
+  
   const {unseenVideos, seenVideos} = useMemo(() => {
     const unseen = filteredVideos.filter(v => !readVideoIds.has(v.id));
     const seen = filteredVideos.filter(v => readVideoIds.has(v.id))
@@ -222,7 +227,10 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     return { unseenVideos: unseen, seenVideos: seen };
   }, [filteredVideos, readVideoIds]);
 
+  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>(unseenVideos);
+
   useEffect(() => {
+    // When the original unseen videos change (e.g. after a fetch), update the shuffled list
     setShuffledUnseenVideos(unseenVideos);
   }, [unseenVideos]);
 
@@ -323,14 +331,11 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                     <CloudCog />
                     Load Latest App
                 </Button>
-                <Button onClick={() => loadFeed()} variant="outline" size="icon" disabled={isPending}>
-                    {isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-                </Button>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2" title="Total API Hits Today (IST)">
+                <div className="flex items-center gap-2" title="Total API Hits Today (IST) - Resets Daily">
                     <Server className="h-4 w-4" />
-                    <AnimatedCounter value={hitCount} />
+                    <span>API Hits: <AnimatedCounter value={hitCount} /> / 10000</span>
                 </div>
                 <span>|</span>
                 <div>
