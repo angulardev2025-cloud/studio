@@ -1,3 +1,4 @@
+
 'use server';
 
 import { sub } from 'date-fns';
@@ -54,9 +55,14 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 
   const response = await fetch(url.toString(), { next: { revalidate: 3600 } }); // Cache for 1 hour
   if (!response.ok) {
-    const errorData = await response.json();
-    console.error('YouTube API Error:', errorData);
-    throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
+    try {
+        const errorData = await response.json();
+        console.error('YouTube API Error:', errorData);
+        throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
+    } catch (jsonError) {
+        // If parsing JSON fails, throw a more generic error with the status text
+        throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
+    }
   }
   return response.json();
 }
@@ -275,5 +281,3 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: null, error: `API Error: ${errorMessage}`, message: null };
   }
 }
-
-    
