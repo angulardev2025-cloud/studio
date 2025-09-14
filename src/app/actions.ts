@@ -206,21 +206,25 @@ async function writeOfflineData(videos: VideoData[]): Promise<void> {
   }
 }
 
+async function getOfflineFetcherState(): Promise<FetcherState> {
+  try {
+    const offlineVideos = await readOfflineData();
+    if (offlineVideos.length === 0) {
+      return { data: null, error: 'Offline data file not found or is empty. Please run "Fetch Videos" to create it.', message: null };
+    }
+    const sortedVideos = offlineVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    return { data: sortedVideos, error: null, message: `Successfully loaded ${sortedVideos.length} videos from local data.` };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+    console.error("Error in offline mode:", errorMessage);
+    return { data: null, error: `Offline Data Error: ${errorMessage}`, message: null };
+  }
+}
+
 // Main server action to fetch, combine, and sort videos from all channels
 export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean } = {}): Promise<FetcherState> {
   if (offline) {
-    try {
-      const offlineVideos = await readOfflineData();
-      if (offlineVideos.length === 0) {
-        return { data: null, error: 'Offline data file not found or is empty. Please run "Fetch Videos" to create it.', message: null };
-      }
-      const sortedVideos = offlineVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-      return { data: sortedVideos, error: null, message: `Successfully loaded ${sortedVideos.length} videos from local data.` };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      console.error("Error in offline mode:", errorMessage);
-      return { data: null, error: `Offline Data Error: ${errorMessage}`, message: null };
-    }
+    return getOfflineFetcherState();
   }
 
   const apiKey = process.env.YT_API_KEY;
@@ -281,6 +285,16 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
     console.error("Error in fetchYouTubeFeed:", errorMessage);
+
+    if (errorMessage.includes('Access to the YouTube API was denied')) {
+        console.log('API key error detected. Falling back to offline data.');
+        const offlineState = await getOfflineFetcherState();
+        return { 
+            ...offlineState,
+            error: `${errorMessage} Falling back to offline data.`, // Prepend the original error
+        };
+    }
+
     return { data: null, error: `API Error: ${errorMessage}`, message: null };
   }
 }
