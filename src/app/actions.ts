@@ -302,15 +302,17 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     if (errorMessage.includes('quota has been exceeded') || errorMessage.includes('Access to the YouTube API was denied')) {
         console.log('API key or quota error detected. Falling back to offline data.');
         const offlineState = await getOfflineFetcherState();
-        return { 
-            ...offlineState,
-            error: `${errorMessage} Falling back to offline data.`, // Prepend the original error
-        };
+        // If offline data exists, return it with the error as a non-critical message
+        if (offlineState.data) {
+            return { 
+                ...offlineState,
+                error: `${errorMessage} Falling back to previously cached data.`,
+            };
+        }
+        // If no offline data, it's a hard error
+        return { data: null, error: `API Error: ${errorMessage} and no offline data is available.`, message: null };
     }
 
     return { data: null, error: `API Error: ${errorMessage}`, message: null };
   }
 }
-
-
-      

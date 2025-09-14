@@ -346,6 +346,15 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 </AlertDescription>
             </Alert>
         )}
+        
+        {state.error && !isPending && (
+            <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>An Error Occurred</AlertTitle>
+                <AlertDescription>{state.error}</AlertDescription>
+            </Alert>
+        )}
+
 
         <div className="flex flex-col gap-4 md:flex-row">
             <div className="relative flex-grow">
@@ -410,20 +419,9 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         </TabsList>
 
         <TabsContent value="tosee">
-            {state.error && !isPending && (
-                <Alert variant="destructive" className="mt-8">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>An Error Occurred</AlertTitle>
-                <AlertDescription>
-                    {state.error}
-                    <Button onClick={() => loadFeed()} variant="secondary" className="mt-4">
-                    Retry
-                    </Button>
-                </AlertDescription>
-                </Alert>
-            )}
+            {isPending && <LoadingState />}
 
-            {!state.error && !isPending && unseenVideos.length === 0 && (
+            {!isPending && unseenVideos.length === 0 && (
                 <Alert className="mt-8">
                 <Youtube className="h-4 w-4" />
                 <AlertTitle>All Caught Up!</AlertTitle>
@@ -464,8 +462,6 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 )}
                 </>
             )}
-
-            {isPending && <LoadingState />}
         </TabsContent>
 
         <TabsContent value="seen">
