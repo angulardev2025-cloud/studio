@@ -55,6 +55,9 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 
   const response = await fetch(url.toString(), { next: { revalidate: 3600 } }); // Cache for 1 hour
   if (!response.ok) {
+     if (response.status === 403) {
+      throw new Error('Access to the YouTube API was denied. Please ensure your YT_API_KEY is correct and that the YouTube Data API v3 is enabled in your Google Cloud project.');
+    }
     try {
         const errorData = await response.json();
         console.error('YouTube API Error:', errorData);
