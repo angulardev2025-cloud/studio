@@ -6,7 +6,7 @@ import type { FetcherState, VideoData } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff, CloudCog } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff, CloudCog, Shuffle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -151,6 +151,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [activeTab, setActiveTab] = useState('tosee');
 
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
+  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>([]);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -204,6 +205,10 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     return { unseenVideos: unseen, seenVideos: seen };
   }, [state.data, searchTerm, selectedChannel, readVideoIds]);
 
+  useEffect(() => {
+    setShuffledUnseenVideos(unseenVideos);
+  }, [unseenVideos]);
+
 
   const markAsRead = useCallback((videoId: string) => {
      setReadVideoIds(prevReadIds => {
@@ -212,7 +217,12 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       }
       const newReadIds = new Set(prevReadIds);
       newReadIds.add(videoId);
-      localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
+      
+      try {
+        localStorage.setItem(READ_VIDEOS_KEY, JSON.stringify(Array.from(newReadIds)));
+      } catch (error) {
+        console.error("Failed to save read videos to localStorage", error);
+      }
 
       if (unseenVideos.length === 1 && unseenVideos[0].id === videoId) {
         setActiveTab('seen');
@@ -222,6 +232,18 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     });
   }, [unseenVideos]);
 
+  const shuffleVideos = useCallback(() => {
+    startTransition(() => {
+        setShuffledUnseenVideos(prev => {
+            const array = [...prev];
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        });
+    });
+  }, []);
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
     const action = options.offline ? 'offline' : 'online';
@@ -256,14 +278,14 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   }, [initialState.data]);
 
   const visibleUnseenVideos = useMemo(() => {
-    return unseenVideos.slice(0, visibleCount);
-  }, [unseenVideos, visibleCount]);
+    return shuffledUnseenVideos.slice(0, visibleCount);
+  }, [shuffledUnseenVideos, visibleCount]);
 
   const loadMore = () => {
     setVisibleCount(prevCount => prevCount + LOAD_MORE_COUNT);
   }
 
-  const hasMore = visibleCount < (unseenVideos?.length || 0);
+  const hasMore = visibleCount < (shuffledUnseenVideos?.length || 0);
   const totalChannels = channelUrls.length;
 
   return (
@@ -409,16 +431,22 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
             
             {!isPending && unseenVideos.length > 0 && (
                 <>
-                <JsonViewer data={unseenVideos} />
+                <div className="my-4 flex items-center gap-4">
+                    <JsonViewer data={shuffledUnseenVideos} />
+                    <Button onClick={shuffleVideos} variant="outline" disabled={isPending}>
+                        <Shuffle className="mr-2" />
+                        {isPending ? "Shuffling..." : "Shuffle Videos"}
+                    </Button>
+                </div>
                 {viewMode === 'grid' ? (
-                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleUnseenVideos.map((video, index) => (
                         <VideoCard key={video.id} video={video} index={index} isRead={readVideoIds.has(video.id)} onView={markAsRead} />
                     ))}
                     </div>
                 ) : (
                     <div className="mt-8">
-                        <VideoDeckCard unseenVideos={unseenVideos} seenVideos={seenVideos} onView={markAsRead} readVideoIds={readVideoIds} />
+                        <VideoDeckCard unseenVideos={shuffledUnseenVideos} seenVideos={seenVideos} onView={markAsRead} readVideoIds={readVideoIds} />
                     </div>
                 )}
 
@@ -440,3 +468,4 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     </>
   );
 }
+

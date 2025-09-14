@@ -142,3 +142,4 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
     </Card>
   );
 }
+
