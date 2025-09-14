@@ -40,4 +40,5 @@ export const channelUrls = [
   'https://youtube.com/@haylsworld',
   'https://youtube.com/@techysomzkannada',
   'https://youtube.com/@ganeshkaranthcrictalks',
+  'https://youtube.com/@bhatnbhat',
 ];
