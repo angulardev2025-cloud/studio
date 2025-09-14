@@ -151,7 +151,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [activeTab, setActiveTab] = useState('tosee');
 
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
-  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>([]);
+  const [allVideos, setAllVideos] = useState<VideoData[]>(initialState.data || []);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -185,25 +185,31 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     }
     
     setState(initialState);
+    if(initialState.data) {
+        setAllVideos(initialState.data);
+    }
   }, [initialState]);
 
-  const {unseenVideos, seenVideos} = useMemo(() => {
-    if (!state.data) return { unseenVideos: [], seenVideos: [] };
+  const filteredVideos = useMemo(() => {
+    if (!allVideos) return [];
 
-    const filtered = state.data.filter(video => {
+    return allVideos.filter(video => {
       const matchesChannel = selectedChannel === 'all' || video.uploader === selectedChannel;
       const matchesSearch = searchTerm.trim() === '' || 
                             video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             video.description.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesChannel && matchesSearch;
     });
+  }, [allVideos, searchTerm, selectedChannel]);
 
-    const unseen = filtered.filter(v => !readVideoIds.has(v.id));
-    const seen = filtered.filter(v => readVideoIds.has(v.id))
+  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>([]);
+
+  const {unseenVideos, seenVideos} = useMemo(() => {
+    const unseen = filteredVideos.filter(v => !readVideoIds.has(v.id));
+    const seen = filteredVideos.filter(v => readVideoIds.has(v.id))
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-    
     return { unseenVideos: unseen, seenVideos: seen };
-  }, [state.data, searchTerm, selectedChannel, readVideoIds]);
+  }, [filteredVideos, readVideoIds]);
 
   useEffect(() => {
     setShuffledUnseenVideos(unseenVideos);
@@ -223,8 +229,9 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       } catch (error) {
         console.error("Failed to save read videos to localStorage", error);
       }
-
-      if (unseenVideos.length === 1 && unseenVideos[0].id === videoId) {
+      
+      const isLastUnseenVideo = unseenVideos.length === 1 && unseenVideos[0].id === videoId;
+      if (isLastUnseenVideo) {
         setActiveTab('seen');
       }
 
@@ -441,12 +448,12 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 {viewMode === 'grid' ? (
                     <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {visibleUnseenVideos.map((video, index) => (
-                        <VideoCard key={video.id} video={video} index={index} isRead={readVideoIds.has(video.id)} onView={markAsRead} />
+                        <VideoCard key={video.id} video={video} index={index} onView={markAsRead} />
                     ))}
                     </div>
                 ) : (
                     <div className="mt-8">
-                        <VideoDeckCard unseenVideos={shuffledUnseenVideos} seenVideos={seenVideos} onView={markAsRead} readVideoIds={readVideoIds} />
+                        <VideoDeckCard unseenVideos={shuffledUnseenVideos} seenVideos={seenVideos} onView={markAsRead} />
                     </div>
                 )}
 
@@ -468,4 +475,3 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
     </>
   );
 }
-

@@ -19,11 +19,10 @@ import { Badge } from './ui/badge';
 type VideoCardProps = {
   video: VideoData;
   index: number;
-  isRead: boolean;
   onView: (videoId: string) => void;
 };
 
-export default function VideoCard({ video, index, isRead, onView }: VideoCardProps) {
+export default function VideoCard({ video, index, onView }: VideoCardProps) {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -84,9 +83,6 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
       className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl"
     >
       <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative" onClick={handleView}>
-        {isRead && (
-            <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
-        )}
         {video.thumbnailUrl ? (
           <Image
             src={video.thumbnailUrl}
@@ -100,11 +96,6 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
           <div className="flex h-full w-full items-center justify-center bg-secondary">
             <p className="text-muted-foreground">No thumbnail</p>
           </div>
-        )}
-        {isRead && (
-            <div className="absolute bottom-2 right-2 z-10 bg-black/60 p-1 rounded-full backdrop-blur-sm">
-                <Eye className="h-4 w-4 text-white" />
-            </div>
         )}
        </Link>
       <CardHeader className="flex-row items-center gap-4 flex-grow p-4">
@@ -142,4 +133,3 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
     </Card>
   );
 }
-

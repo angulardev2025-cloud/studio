@@ -39,14 +39,7 @@ const SeenVideoCard = ({ video, index }: { video: VideoData; index: number }) =>
 )
 
 
-const DeckSwiperSlide = ({ video, index, isRead, onView }: { video: VideoData; index: number, isRead: boolean, onView: (id: string) => void }) => {
-    
-    useEffect(() => {
-        const slideElement = document.querySelector(`[data-videoid="${video.id}"]`);
-        if (slideElement && isRead) {
-            slideElement.classList.add('fade-out');
-        }
-    }, [isRead, video.id]);
+const DeckSwiperSlide = ({ video, index, onView }: { video: VideoData; index: number, onView: (id: string) => void }) => {
     
     const publishedAtDate = new Date(video.publishedAt);
 
@@ -73,9 +66,6 @@ const DeckSwiperSlide = ({ video, index, isRead, onView }: { video: VideoData; i
                 <CardContent className="flex-grow flex flex-col gap-4 p-4 sm:p-6 pt-0">
                      <div className="w-full aspect-video relative shrink-0 overflow-hidden rounded-lg">
                         <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block w-full h-full" onClick={() => onView(video.id)}>
-                            {isRead && (
-                                <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>
-                            )}
                             {video.thumbnailUrl ? (
                                 <Image
                                     src={video.thumbnailUrl}
@@ -88,11 +78,6 @@ const DeckSwiperSlide = ({ video, index, isRead, onView }: { video: VideoData; i
                                 ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-secondary">
                                     <p className="text-muted-foreground">No thumbnail</p>
-                                </div>
-                            )}
-                            {isRead && (
-                                <div className="absolute bottom-2 right-2 z-10 bg-black/60 p-1 rounded-full backdrop-blur-sm">
-                                    <Eye className="h-4 w-4 text-white" />
                                 </div>
                             )}
                         </Link>
@@ -121,10 +106,9 @@ type VideoDeckCardProps = {
     unseenVideos: VideoData[];
     seenVideos: VideoData[];
     onView: (videoId: string) => void;
-    readVideoIds: Set<string>;
 }
 
-export default function VideoDeckCard({ unseenVideos, seenVideos, onView, readVideoIds }: VideoDeckCardProps) {
+export default function VideoDeckCard({ unseenVideos, seenVideos, onView }: VideoDeckCardProps) {
   const [swiper, setSwiper] = useState<SwiperClass | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   
@@ -149,6 +133,9 @@ export default function VideoDeckCard({ unseenVideos, seenVideos, onView, readVi
   return (
     <div className="relative w-full max-w-md mx-auto">
         <style jsx global>{`
+            .swiper-slide-next {
+                transition: transform 0.5s ease-out;
+            }
             .fade-out {
                 animation: fadeOut 0.5s ease-out forwards;
             }
@@ -178,14 +165,13 @@ export default function VideoDeckCard({ unseenVideos, seenVideos, onView, readVi
                     }}
                     onSwiper={setSwiper}
                     onSlideChange={handleSlideChange}
-                    key={unseenVideos.length} // Force re-render when unseen videos change
+                    key={unseenVideos.map(v => v.id).join('-')} // Force re-render when unseen videos change
                 >
                     {unseenVideos.map((video, index) => (
                         <DeckSwiperSlide 
                             video={video} 
                             index={index} 
                             key={video.id} 
-                            isRead={readVideoIds.has(video.id)} 
                             onView={onView}
                         />
                     ))}
