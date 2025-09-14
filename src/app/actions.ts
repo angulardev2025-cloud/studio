@@ -55,15 +55,24 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 
   const response = await fetch(url.toString(), { next: { revalidate: 3600 } }); // Cache for 1 hour
   if (!response.ok) {
-     if (response.status === 403) {
-      throw new Error('Access to the YouTube API was denied. Please ensure your YT_API_KEY is correct and that the YouTube Data API v3 is enabled in your Google Cloud project.');
-    }
     try {
         const errorData = await response.json();
         console.error('YouTube API Error:', errorData);
+
+        if (response.status === 403) {
+            const reason = errorData.error?.errors?.[0]?.reason;
+            if (reason === 'quotaExceeded') {
+                throw new Error('The YouTube API daily quota has been exceeded. Please try again tomorrow.');
+            }
+            throw new Error('Access to the YouTube API was denied. Please ensure your YT_API_KEY is correct and that the YouTube Data API v3 is enabled in your Google Cloud project.');
+        }
+
         throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
-    } catch (jsonError) {
-        // If parsing JSON fails, throw a more generic error with the status text
+    } catch (e) {
+        if (e instanceof Error) {
+            throw e; // Re-throw known errors
+        }
+        // If parsing JSON fails or another error occurs, throw a generic error
         throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
     }
   }
@@ -286,8 +295,8 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
     console.error("Error in fetchYouTubeFeed:", errorMessage);
 
-    if (errorMessage.includes('Access to the YouTube API was denied')) {
-        console.log('API key error detected. Falling back to offline data.');
+    if (errorMessage.includes('quota has been exceeded') || errorMessage.includes('Access to the YouTube API was denied')) {
+        console.log('API key or quota error detected. Falling back to offline data.');
         const offlineState = await getOfflineFetcherState();
         return { 
             ...offlineState,
