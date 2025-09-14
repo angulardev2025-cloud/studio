@@ -34,4 +34,5 @@ export const channelUrls = [
   'https://www.youtube.com/c/RakazoneGaming',
   'https://www.youtube.com/c/JagdishChaturvedi',
   'https://www.youtube.com/c/TanuAdugeSpecial',
+  'https://youtube.com/@thepowerhousevines',
 ];
