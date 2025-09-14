@@ -72,9 +72,17 @@ export default function VideoCard({ video, index, isRead, onView }: VideoCardPro
   const handleView = () => {
     onView(video.id);
   }
+  
+  const handleDoubleClick = () => {
+    onView(video.id);
+  };
+
 
   return (
-    <Card className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl">
+    <Card 
+      onDoubleClick={handleDoubleClick}
+      className="flex h-full transform-gpu flex-col overflow-hidden rounded-xl shadow-md transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl"
+    >
       <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" className="block aspect-video relative" onClick={handleView}>
         {isRead && (
             <Badge variant="secondary" className="absolute top-2 right-2 z-10">Read</Badge>

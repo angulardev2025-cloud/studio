@@ -49,9 +49,17 @@ const DeckSwiperSlide = ({ video, index, isRead, onView }: { video: VideoData; i
     }, [isRead, video.id]);
     
     const publishedAtDate = new Date(video.publishedAt);
+
+    const handleDoubleClick = () => {
+      onView(video.id);
+    };
+
     return (
         <SwiperSlide key={video.id} data-videoid={video.id}>
-            <Card className="flex flex-col h-full overflow-hidden shadow-lg bg-card">
+            <Card 
+              onDoubleClick={handleDoubleClick}
+              className="flex flex-col h-full overflow-hidden shadow-lg bg-card"
+            >
                  <CardHeader className="flex-row items-center justify-between pb-2 px-4 sm:px-6">
                     <span className="text-3xl sm:text-4xl font-bold text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
                      <div className="flex items-center gap-1">
