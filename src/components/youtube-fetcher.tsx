@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useTransition, useRef } from 'react';
 import type { FetcherState, VideoData } from '@/lib/types';
+import { fetchYouTubeFeed } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
@@ -144,8 +145,8 @@ function JsonViewer({ data }: { data: VideoData[] }) {
 }
 
 
-export default function YoutubeFeed({ initialState }: { initialState: FetcherState }) {
-  const [state, setState] = useState<FetcherState>(initialState);
+export default function YoutubeFeed({ initialState: serverInitialState }: { initialState: FetcherState }) {
+  const [state, setState] = useState<FetcherState>(serverInitialState);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
@@ -156,7 +157,10 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [activeTab, setActiveTab] = useState('tosee');
 
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
-  const [allVideos, setAllVideos] = useState<VideoData[]>(initialState.data || []);
+  const [allVideos, setAllVideos] = useState<VideoData[]>(serverInitialState.data || []);
+
+  const [initialState, setInitialState] = useState<FetcherState>(serverInitialState);
+  const fetchedState = useRef<FetcherState | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -175,7 +179,6 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         if (date === todayIST) {
           setHitCount(count);
         } else {
-          // Reset on new day
           localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: 0, date: todayIST }));
           setHitCount(0);
         }
@@ -190,13 +193,24 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
       console.error('Could not read/write to localStorage:', error);
     }
     
-    setState(initialState);
-    if(initialState.data) {
-        setAllVideos(initialState.data);
+    // Only set initial state on first load, not on subsequent fetches
+    if (!fetchedState.current) {
+        setState(initialState);
+        if(initialState.data) {
+            setAllVideos(initialState.data);
+        }
     }
-    if (initialState.hits && initialState.hits > 0) {
+  }, [initialState]);
+
+  const updateStateAfterFetch = (newState: FetcherState) => {
+    fetchedState.current = newState; // Mark that a fetch has occurred
+    setState(newState);
+    if(newState.data) {
+        setAllVideos(newState.data);
+    }
+    if (newState.hits && newState.hits > 0) {
       setHitCount(prev => {
-        const newTotal = prev + initialState.hits;
+        const newTotal = prev + newState.hits;
         try {
           localStorage.setItem(HIT_COUNTER_KEY, JSON.stringify({ count: newTotal, date: getISTDateString() }));
         } catch (error) {
@@ -205,7 +219,9 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         return newTotal;
       });
     }
-  }, [initialState]);
+    setLoadingAction(null);
+  };
+
 
   const filteredVideos = useMemo(() => {
     if (!allVideos) return [];
@@ -230,7 +246,6 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>(unseenVideos);
 
   useEffect(() => {
-    // When the original unseen videos change (e.g. after a fetch), update the shuffled list
     setShuffledUnseenVideos(unseenVideos);
   }, [unseenVideos]);
 
@@ -274,34 +289,21 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
     const action = options.offline ? 'offline' : 'online';
     setLoadingAction(action);
-    startTransition(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (options.offline) {
-            params.set('offline', 'true');
-        } else {
-            params.delete('offline');
-        }
-        router.push(`?${params.toString()}`);
+    startTransition(async () => {
+        const newState = await fetchYouTubeFeed(options);
+        updateStateAfterFetch(newState);
     });
-  }, [router]);
-
-  useEffect(() => {
-      const isOffline = searchParams.get('offline') === 'true';
-      if ((isOffline && loadingAction === 'offline') || (!isOffline && loadingAction === 'online')) {
-          setLoadingAction(null);
-      }
-  }, [searchParams, loadingAction, state]);
-
+  }, []);
 
   const handleReload = () => {
     window.location.reload();
   };
 
   const channelNames = useMemo(() => {
-    if (!initialState.data) return [];
-    const names = new Set(initialState.data.map(video => video.uploader));
+    if (!allVideos) return [];
+    const names = new Set(allVideos.map(video => video.uploader));
     return ['all', ...Array.from(names)];
-  }, [initialState.data]);
+  }, [allVideos]);
 
   const visibleUnseenVideos = useMemo(() => {
     return shuffledUnseenVideos.slice(0, visibleCount);
@@ -344,21 +346,17 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
             </div>
         </div>
 
-        {isPending && loadingAction === 'online' && (
+        {isPending && (
             <Alert className="mt-4 bg-secondary">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <AlertTitle>Fetching Videos</AlertTitle>
+                <AlertTitle>
+                  {loadingAction === 'online' ? 'Fetching Videos' : 'Loading Offline Data'}
+                </AlertTitle>
                 <AlertDescription>
-                Please wait a moment while we fetch the latest videos from online sources.
-                </AlertDescription>
-            </Alert>
-        )}
-        {isPending && loadingAction === 'offline' && (
-            <Alert className="mt-4 bg-secondary">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <AlertTitle>Loading Offline Data</AlertTitle>
-                <AlertDescription>
-                Please wait while we load the video data from your local cache.
+                  {loadingAction === 'online' 
+                    ? 'Please wait a moment while we fetch the latest videos from online sources.'
+                    : 'Please wait while we load the video data from your local cache.'
+                  }
                 </AlertDescription>
             </Alert>
         )}
@@ -368,6 +366,14 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>An Error Occurred</AlertTitle>
                 <AlertDescription>{state.error}</AlertDescription>
+            </Alert>
+        )}
+
+        {state.message && !state.error && !isPending && (
+             <Alert className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Info</AlertTitle>
+                <AlertDescription>{state.message}</AlertDescription>
             </Alert>
         )}
 
@@ -393,7 +399,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
                 </Button>
               )}
             </div>
-            <Select value={selectedChannel} onValueChange={setSelectedChannel} disabled={!state.data}>
+            <Select value={selectedChannel} onValueChange={setSelectedChannel} disabled={!allVideos || allVideos.length === 0}>
               <SelectTrigger className="w-full md:w-[280px]">
                 <SelectValue placeholder="Filter by channel" />
               </SelectTrigger>
@@ -437,7 +443,7 @@ export default function YoutubeFeed({ initialState }: { initialState: FetcherSta
         <TabsContent value="tosee">
             {isPending && <LoadingState />}
 
-            {!isPending && unseenVideos.length === 0 && (
+            {!isPending && unseenVideos.length === 0 && allVideos.length > 0 &&(
                 <Alert className="mt-8">
                 <Youtube className="h-4 w-4" />
                 <AlertTitle>All Caught Up!</AlertTitle>
