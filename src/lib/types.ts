@@ -6,6 +6,7 @@ export type VideoData = {
   thumbnailUrl: string;
   uploader: string;
   shareLink: string;
+  channelUrl: string;
 };
 
 export type FetcherState = {

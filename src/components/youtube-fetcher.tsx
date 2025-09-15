@@ -160,7 +160,6 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   const [allVideos, setAllVideos] = useState<VideoData[]>(serverInitialState.data || []);
 
   const [initialState, setInitialState] = useState<FetcherState>(serverInitialState);
-  const fetchedState = useRef<FetcherState | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -192,21 +191,17 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     } catch (error) {
       console.error('Could not read/write to localStorage:', error);
     }
-    
-    // Only set initial state on first load, not on subsequent fetches
-    if (!fetchedState.current) {
-        setState(initialState);
-        if(initialState.data) {
-            setAllVideos(initialState.data);
-        }
-    }
-  }, [initialState]);
+  }, []);
 
   const updateStateAfterFetch = (newState: FetcherState) => {
-    fetchedState.current = newState; // Mark that a fetch has occurred
     setState(newState);
     if(newState.data) {
-        setAllVideos(newState.data);
+        // Merge new data with existing to avoid losing data on re-fetch
+        setAllVideos(prevVideos => {
+            const combined = [...newState.data, ...prevVideos];
+            const uniqueVideos = Array.from(new Map(combined.map(v => [v.id, v])).values());
+            return uniqueVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+        });
     }
     if (newState.hits && newState.hits > 0) {
       setHitCount(prev => {
@@ -244,7 +239,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     return { unseenVideos: unseen, seenVideos: seen };
   }, [filteredVideos, readVideoIds]);
 
-  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>(unseenVideos);
+  const [shuffledUnseenVideos, setShuffledUnseenVideos] = useState<VideoData[]>([]);
 
   useEffect(() => {
     setShuffledUnseenVideos(unseenVideos);
@@ -289,12 +284,22 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
     const action = options.offline ? 'offline' : 'online';
+    
+    if (options.offline) {
+        if(allVideos.length > 0) {
+            setState(prev => ({...prev, message: "You are in offline mode. Displaying previously fetched videos."}));
+        } else {
+            setState(prev => ({...prev, error: "No videos in cache. Please 'Fetch Videos' first to use offline mode."}));
+        }
+        return;
+    }
+    
     setLoadingAction(action);
     startTransition(async () => {
         const newState = await fetchYouTubeFeed(options);
         updateStateAfterFetch(newState);
     });
-  }, []);
+  }, [allVideos]);
 
   const handleReload = () => {
     window.location.reload();
@@ -303,7 +308,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   const channelNames = useMemo(() => {
     if (!allVideos) return [];
     const names = new Set(allVideos.map(video => video.uploader));
-    return ['all', ...Array.from(names)];
+    return ['all', ...Array.from(names).sort()];
   }, [allVideos]);
 
   const visibleUnseenVideos = useMemo(() => {
@@ -342,7 +347,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
                 </div>
                 <span>|</span>
                 <div>
-                {state.data && `Found ${state.data.length} videos from ${totalChannels} channels.`}
+                {allVideos && `Found ${allVideos.length} videos from ${totalChannels} channels.`}
                 </div>
             </div>
         </div>
@@ -442,7 +447,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
         </TabsList>
 
         <TabsContent value="tosee">
-            {isPending && <LoadingState />}
+            {isPending && loadingAction === 'online' && <LoadingState />}
 
             {!isPending && unseenVideos.length === 0 && allVideos.length > 0 &&(
                 <Alert className="mt-8">

@@ -5,7 +5,7 @@ import { useState, useTransition, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Sparkles, Share2, Loader2, Eye, Circle } from 'lucide-react';
+import { Sparkles, Share2, Loader2, Copy } from 'lucide-react';
 
 import type { VideoData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { summarizeDescription } from '@/ai/flows/summarize-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Badge } from './ui/badge';
 
 type VideoCardProps = {
   video: VideoData;
@@ -75,6 +74,23 @@ export default function VideoCard({ video, index, onView }: VideoCardProps) {
   
   const handleDoubleClick = () => {
     onView(video.id);
+  };
+  
+  const handleShare = () => {
+    const shareText = `Check out this video: ${video.title}\n${video.shareLink}\nFrom channel: ${video.channelUrl}`;
+    navigator.clipboard.writeText(shareText).then(() => {
+      toast({
+        title: 'Copied to Clipboard',
+        description: 'Video and channel link copied.',
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      toast({
+        title: 'Error',
+        description: 'Could not copy link to clipboard.',
+        variant: 'destructive',
+      });
+    });
   };
 
 
@@ -155,8 +171,12 @@ export default function VideoCard({ video, index, onView }: VideoCardProps) {
               </DialogContent>
             </Dialog>
 
+            <Button variant="ghost" size="icon" onClick={handleShare} aria-label="Copy share link">
+                <Copy />
+            </Button>
+
             <Button variant="ghost" size="icon" asChild>
-              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Share video" onClick={handleView}>
+              <Link href={video.shareLink} target="_blank" rel="noopener noreferrer" aria-label="Open video on YouTube" onClick={handleView}>
                 <Share2 />
               </Link>
             </Button>
