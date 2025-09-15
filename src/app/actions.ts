@@ -40,7 +40,7 @@ const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' 
     const pathname = decodeURIComponent(urlObj.pathname);
 
     // Matches /channel/UC...
-    const channelIdMatch = pathname.match(/\/channel\/(UC[\w-]{24})/);
+    const channelIdMatch = pathname.match(/\/channel\/(UC[\w-]{22,24})/);
     if (channelIdMatch?.[1]) {
       return { id: channelIdMatch[1], type: 'id' };
     }
@@ -234,12 +234,14 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
                 const data = await fetchApi('channels', { part: 'snippet,contentDetails', forUsername: user, key: apiKey });
                 if (data.items && data.items.length > 0) {
                     const item = data.items[0];
-                    if (item.id && item.snippet?.title && item.contentDetails?.relatedPlaylists?.uploads) {
+                     if (item.id && item.snippet?.title && item.contentDetails?.relatedPlaylists?.uploads) {
                         channelDetailsMap.set(item.id, {
                             title: item.snippet.title,
                             uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
                         });
                     }
+                } else {
+                    console.warn(`Could not resolve username: ${user}`);
                 }
              } catch (error) {
                 console.error(`Failed to fetch details for username ${user}:`, error);
@@ -315,5 +317,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: existingOfflineData, error: `API Error: ${errorMessage}`, message: 'An error occurred. Displaying data from offline cache.', hits: hits.count };
   }
 }
+
+    
 
     
