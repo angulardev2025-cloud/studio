@@ -77,7 +77,7 @@
       radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 1) 0px, transparent 50%);
     background-size: 150% 150%;
     position: relative;
-    animation: move-gradient 5s ease-in-out infinite;
+    @apply animate-move-gradient;
   }
 
   body::after {

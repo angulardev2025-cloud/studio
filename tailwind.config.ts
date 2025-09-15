@@ -90,13 +90,8 @@ export default {
           '90%': { transform: 'translate(-10%, 10%)' },
         },
         'move-gradient': {
-          '0%, 100%': {
-            'background-size': '150% 150%',
-            'background-position': '10% 0%',
-          },
           '50%': {
-            'background-size': '150% 150%',
-            'background-position': '90% 100%',
+            'background-position': '100% 50%',
           },
         },
       },
@@ -104,7 +99,7 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         grain: 'grain 8s steps(10) infinite',
-        'move-gradient': 'move-gradient 5s ease-in-out infinite',
+        'move-gradient': 'move-gradient 5s ease-in-out infinite alternate',
       },
     },
   },
