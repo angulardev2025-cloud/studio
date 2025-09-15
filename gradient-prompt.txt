@@ -1,0 +1,14 @@
+Please add an animated, grainy gradient background to the entire application. The background should be visually similar to a colorful aurora or nebula, with a subtle noise texture on top. The gradient colors should smoothly and continuously shift over a 5-second cycle.
+
+To achieve this, please make the following changes:
+
+1.  **Modify `src/app/globals.css`**:
+    *   Apply a multi-layered, radial gradient background to the `body` element. Use a mix of vibrant colors (like purples, pinks, blues, and oranges) that blend into a dark background.
+    *   Apply a grainy texture over the gradient. This can be done using an SVG noise filter applied as a background image with low opacity.
+    *   Use a custom Tailwind utility class to apply a 5-second, infinite, alternating animation that changes the `background-position` to create a dynamic shifting effect.
+
+2.  **Modify `tailwind.config.ts`**:
+    *   Add keyframes named `move-gradient` that animate the `background-position` property to `100% 50%` at the 50% mark.
+    *   Add an animation utility named `move-gradient` that uses these keyframes and has a duration of `5s`, an `ease-in-out` timing function, and runs `infinite alternate`.
+    *   Add keyframes named `grain` to create the subtle noise animation effect.
+    *   Add an animation utility named `grain` that uses these keyframes.
