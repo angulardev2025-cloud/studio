@@ -237,7 +237,8 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
   
   const {unseenVideos, seenVideos} = useMemo(() => {
-    const unseen = filteredVideos.filter(v => !readVideoIds.has(v.id));
+    const unseen = filteredVideos.filter(v => !readVideoIds.has(v.id))
+      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
     const seen = filteredVideos.filter(v => readVideoIds.has(v.id))
       .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
     return { unseenVideos: unseen, seenVideos: seen };
@@ -493,5 +494,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     </>
   );
 }
+
+    
 
     
