@@ -106,7 +106,7 @@ async function fetchApi(endpoint: string, params: Record<string, string>) {
 
 // Fetches all videos for a single channel playlist
 async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, apiKey: string, hits: { count: number }): Promise<VideoData[]> {
-    const twoWeeksAgo = sub(new Date(), { weeks: 2 });
+    const fourWeeksAgo = sub(new Date(), { weeks: 4 });
     let allVideoItems: any[] = [];
     let nextPageToken: string | undefined = undefined;
     let shouldStop = false;
@@ -126,7 +126,7 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
               for (const item of playlistData.items) {
                   if (item.snippet?.publishedAt) {
                     const publishedAt = new Date(item.snippet.publishedAt);
-                    if (publishedAt < twoWeeksAgo) {
+                    if (publishedAt < fourWeeksAgo) {
                         shouldStop = true;
                         break;
                     }
@@ -315,3 +315,5 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: existingOfflineData, error: `API Error: ${errorMessage}`, message: 'An error occurred. Displaying data from offline cache.', hits: hits.count };
   }
 }
+
+    
