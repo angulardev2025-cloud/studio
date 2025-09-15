@@ -1,0 +1,12 @@
+
+[
+  {
+    "id": "example-video-1",
+    "title": "Welcome to the Mock Feed!",
+    "description": "This is a sample video description. When you fetch live data, this file will be populated with real videos from YouTube. You can use Offline Mode to view the contents of this file without hitting the API.",
+    "publishedAt": "2024-01-01T00:00:00Z",
+    "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    "uploader": "Mock Channel",
+    "shareLink": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  }
+]

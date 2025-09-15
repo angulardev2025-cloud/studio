@@ -77,11 +77,10 @@ export default function VideoCard({ video, index, onView }: VideoCardProps) {
   };
   
   const handleShare = () => {
-    const shareText = `Check out this video: ${video.title}\n${video.shareLink}\nFrom channel: ${video.channelUrl}`;
-    navigator.clipboard.writeText(shareText).then(() => {
+    navigator.clipboard.writeText(video.shareLink).then(() => {
       toast({
         title: 'Copied to Clipboard',
-        description: 'Video and channel link copied.',
+        description: 'Video link copied.',
       });
     }).catch(err => {
       console.error('Failed to copy text: ', err);

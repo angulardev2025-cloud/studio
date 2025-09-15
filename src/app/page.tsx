@@ -1,19 +1,18 @@
+
 import YoutubeFeed from '@/components/youtube-fetcher';
 import type { FetcherState } from '@/lib/types';
+import { fetchYouTubeFeed } from './actions';
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: { [key:string]: string | string[] | undefined };
 }) {
 
-  // Default empty state, videos will be fetched on client-side interaction
-  const initialState: FetcherState = {
-    data: [],
-    error: null,
-    message: "Click 'Fetch Videos' to load the latest content or 'Offline Mode' to load from cache.",
-    hits: 0,
-  };
+  // Fetch initial data on the server.
+  // This helps with SEO and provides a faster initial load.
+  // The client-side component will then take over.
+  const initialState: FetcherState = await fetchYouTubeFeed({ offline: true });
 
   return (
     <main className="container mx-auto p-4">

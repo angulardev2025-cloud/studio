@@ -157,9 +157,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   const [activeTab, setActiveTab] = useState('tosee');
 
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
-  const [allVideos, setAllVideos] = useState<VideoData[]>(serverInitialState.data || []);
-
-  const [initialState, setInitialState] = useState<FetcherState>(serverInitialState);
+  const [allVideos, setAllVideos] = useState<VideoData[]>([]);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -187,21 +185,27 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
       const storedReadIds: string[] = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
       setReadVideoIds(new Set(storedReadIds));
+      
+      // On initial load, if there's no server data, try to load offline data.
+      if (!serverInitialState.data || serverInitialState.data.length === 0) {
+        loadFeed({ offline: true });
+      } else {
+        setAllVideos(serverInitialState.data);
+      }
 
     } catch (error) {
       console.error('Could not read/write to localStorage:', error);
+      if (serverInitialState.data) {
+        setAllVideos(serverInitialState.data);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateStateAfterFetch = (newState: FetcherState) => {
     setState(newState);
     if(newState.data) {
-        // Merge new data with existing to avoid losing data on re-fetch
-        setAllVideos(prevVideos => {
-            const combined = [...newState.data, ...prevVideos];
-            const uniqueVideos = Array.from(new Map(combined.map(v => [v.id, v])).values());
-            return uniqueVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-        });
+        setAllVideos(newState.data);
     }
     if (newState.hits && newState.hits > 0) {
       setHitCount(prev => {
@@ -284,22 +288,12 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
   const loadFeed = useCallback((options: { offline?: boolean } = {}) => {
     const action = options.offline ? 'offline' : 'online';
-    
-    if (options.offline) {
-        if(allVideos.length > 0) {
-            setState(prev => ({...prev, message: "You are in offline mode. Displaying previously fetched videos."}));
-        } else {
-            setState(prev => ({...prev, error: "No videos in cache. Please 'Fetch Videos' first to use offline mode."}));
-        }
-        return;
-    }
-    
     setLoadingAction(action);
     startTransition(async () => {
         const newState = await fetchYouTubeFeed(options);
         updateStateAfterFetch(newState);
     });
-  }, [allVideos]);
+  }, []);
 
   const handleReload = () => {
     window.location.reload();
@@ -447,9 +441,9 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
         </TabsList>
 
         <TabsContent value="tosee">
-            {isPending && loadingAction === 'online' && <LoadingState />}
-
-            {!isPending && unseenVideos.length === 0 && allVideos.length > 0 &&(
+            {(isPending && loadingAction === 'online') && <LoadingState />}
+            
+            {(!isPending && unseenVideos.length === 0 && allVideos.length > 0) &&(
                 <Alert className="mt-8">
                 <Youtube className="h-4 w-4" />
                 <AlertTitle>All Caught Up!</AlertTitle>
@@ -485,10 +479,19 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
                 {hasMore && viewMode === 'grid' && (
                     <div className="mt-8 text-center">
-                    <Button onClick={loadMore} variant="outline">Load More</Button>
-                    </div>
+                    <Button onClick={loadMore} variant="outline">Load More</Button>                    </div>
                 )}
                 </>
+            )}
+            
+            {(!isPending && allVideos.length === 0 && !state.error) && (
+                 <Alert className="mt-8">
+                    <Youtube className="h-4 w-4" />
+                    <AlertTitle>Welcome!</AlertTitle>
+                    <AlertDescription>
+                        Click "Fetch Videos" to load content from YouTube channels.
+                    </AlertDescription>
+                </Alert>
             )}
         </TabsContent>
 
@@ -499,7 +502,3 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     </>
   );
 }
-
-    
-
-    
