@@ -33,11 +33,11 @@ const getChannelIdentifier = (url: string): { id: string; type: 'id' | 'handle' 
     if (userOrCNameMatch?.[1]) {
       return { id: userOrCNameMatch[1], type: 'username' };
     }
-
+    
     // Matches /channelname (less specific, last resort for things like /beebomco)
     const customNameMatch = pathname.match(/^\/([\w.-]+)$/);
     if (customNameMatch?.[1] && !customNameMatch[1].startsWith('@')) {
-      return { id: customNameMatch[1], type: 'username' };
+       return { id: customNameMatch[1], type: 'username' };
     }
 
     return null;
@@ -100,12 +100,14 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
 
             if (playlistData.items) {
               for (const item of playlistData.items) {
-                  const publishedAt = new Date(item.snippet.publishedAt);
-                  if (publishedAt < twoWeeksAgo) {
-                      shouldStop = true;
-                      break;
+                  if (item.snippet?.publishedAt) {
+                    const publishedAt = new Date(item.snippet.publishedAt);
+                    if (publishedAt < twoWeeksAgo) {
+                        shouldStop = true;
+                        break;
+                    }
+                    allVideoItems.push(item);
                   }
-                  allVideoItems.push(item);
               }
             }
             
@@ -202,6 +204,8 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
             if (identifier.type === 'id') idsToFetch.push(identifier.id);
             else if (identifier.type === 'username') usernamesToFetch.push(identifier.id);
             else if (identifier.type === 'handle') handlesToFetch.push(identifier.id);
+        } else {
+            console.warn(`Could not identify channel from URL: ${url}`);
         }
     });
 
@@ -218,16 +222,18 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
             const data = await fetchApi('channels', { part: 'snippet,contentDetails', id: chunk, key: apiKey });
             if (data.items) {
                 data.items.forEach((item: any) => {
-                    channelDetailsMap.set(item.id, {
-                        title: item.snippet.title,
-                        uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
-                    });
+                    if (item.id && item.snippet?.title && item.contentDetails?.relatedPlaylists?.uploads) {
+                        channelDetailsMap.set(item.id, {
+                            title: item.snippet.title,
+                            uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+                        });
+                    }
                 });
             }
         }
     }
 
-    // Step 3: Batch fetch for usernames (less efficient, but necessary)
+    // Step 3: Batch fetch for usernames
      if (usernamesToFetch.length > 0) {
         const usernameChunks = [];
         for (let i = 0; i < usernamesToFetch.length; i += 50) {
@@ -235,13 +241,17 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
         }
         for (const chunk of usernameChunks) {
             hits.count++;
+            // Note: forUsername can be finicky. The API is not consistent.
+            // It might be better to use search API as a fallback.
             const data = await fetchApi('channels', { part: 'snippet,contentDetails', forUsername: chunk, key: apiKey });
             if (data.items) {
                 data.items.forEach((item: any) => {
-                    channelDetailsMap.set(item.id, {
-                        title: item.snippet.title,
-                        uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
-                    });
+                   if (item.id && item.snippet?.title && item.contentDetails?.relatedPlaylists?.uploads) {
+                        channelDetailsMap.set(item.id, {
+                            title: item.snippet.title,
+                            uploadsPlaylistId: item.contentDetails.relatedPlaylists.uploads,
+                        });
+                    }
                 });
             }
         }
@@ -249,30 +259,36 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
 
     // Step 4: Fetch handles one by one using search (unfortunately, no batch endpoint for handles)
     for (const handle of handlesToFetch) {
-        hits.count++;
-        const searchData = await fetchApi('search', {
-            part: 'snippet',
-            q: `@${handle}`,
-            type: 'channel',
-            maxResults: '1',
-            key: apiKey,
-        });
-        if (searchData.items?.length > 0) {
-            const channelId = searchData.items[0].id.channelId;
-            const channelTitle = searchData.items[0].snippet.title;
-            // Now fetch contentDetails for the uploads playlist
+        try {
             hits.count++;
-            const channelData = await fetchApi('channels', {
-                part: 'contentDetails',
-                id: channelId,
-                key: apiKey
+            const searchData = await fetchApi('search', {
+                part: 'snippet',
+                q: `@${handle}`,
+                type: 'channel',
+                maxResults: '1',
+                key: apiKey,
             });
-            if (channelData.items?.length > 0) {
-                channelDetailsMap.set(channelId, {
-                    title: channelTitle,
-                    uploadsPlaylistId: channelData.items[0].contentDetails.relatedPlaylists.uploads,
+            if (searchData.items?.length > 0 && searchData.items[0].id.channelId) {
+                const channelId = searchData.items[0].id.channelId;
+                const channelTitle = searchData.items[0].snippet.title;
+                // Now fetch contentDetails for the uploads playlist
+                hits.count++;
+                const channelData = await fetchApi('channels', {
+                    part: 'contentDetails',
+                    id: channelId,
+                    key: apiKey
                 });
+                if (channelData.items?.length > 0 && channelData.items[0].contentDetails?.relatedPlaylists?.uploads) {
+                    channelDetailsMap.set(channelId, {
+                        title: channelTitle,
+                        uploadsPlaylistId: channelData.items[0].contentDetails.relatedPlaylists.uploads,
+                    });
+                }
+            } else {
+                 console.warn(`Could not resolve handle: @${handle}`);
             }
+        } catch (error) {
+            console.error(`Failed to fetch details for handle @${handle}:`, error);
         }
     }
 
@@ -283,9 +299,11 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
 
     const allFetchedVideos = (await Promise.all(playlistPromises)).flat();
     
-    if (allFetchedVideos.length === 0) {
+    if (allFetchedVideos.length === 0 && channelDetailsMap.size > 0) {
         const existingData = await readOfflineData();
-        return { data: existingData, error: null, message: 'No new videos found in the last 2 weeks. Displaying cached data.', hits: hits.count };
+        const message = 'No new videos found in the last 2 weeks. Displaying cached data.';
+        // If there are existing videos, it's not an error, just no new content
+        return { data: existingData.length > 0 ? existingData : [], error: existingData.length > 0 ? null : message, message, hits: hits.count };
     }
     
     // Step 6: Read existing offline data, merge, and write back
@@ -315,7 +333,7 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
         console.log('API key or quota error detected. Falling back to offline data.');
         const offlineState = await getOfflineFetcherState();
         // If offline data exists, return it with the error as a non-critical message
-        if (offlineState.data) {
+        if (offlineState.data && offlineState.data.length > 0) {
             return { 
                 ...offlineState,
                 error: `${errorMessage} Falling back to previously cached data.`,
@@ -329,5 +347,3 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: null, error: `API Error: ${errorMessage}`, message: null, hits: hits.count };
   }
 }
-
-    
