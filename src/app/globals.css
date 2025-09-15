@@ -2,38 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%; /* Changed from 0 0% 100% */
-    --foreground: 210 40% 98%; /* Changed from 222.2 84% 4.9% */
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 210 40% 98%; /* Changed */
-    --primary-foreground: 222.2 47.4% 11.2%; /* Changed */
-    --secondary: 217.2 32.6% 17.5%; /* Changed */
-    --secondary-foreground: 210 40% 98%; /* Changed */
-    --muted: 217.2 32.6% 17.5%; /* Changed */
-    --muted-foreground: 215 20.2% 65.1%; /* Changed */
-    --accent: 217.2 32.6% 17.5%; /* Changed */
-    --accent-foreground: 210 40% 98%; /* Changed */
-    --destructive: 0 62.8% 30.6%; /* Changed */
-    --destructive-foreground: 210 40% 98%; /* Changed */
-    --border: 217.2 32.6% 17.5%; /* Changed */
-    --input: 217.2 32.6% 17.5%; /* Changed */
-    --ring: 212.7 26.8% 83.9%; /* Changed */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -68,6 +65,32 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-    background-color: #1B1B1B;
+    min-height: 100vh;
+    background-color: #111;
+    background-image:
+      radial-gradient(at 27% 37%, hsla(215, 98%, 61%, 1) 0px, transparent 50%),
+      radial-gradient(at 97% 21%, hsla(125, 98%, 72%, 1) 0px, transparent 50%),
+      radial-gradient(at 52% 99%, hsla(355, 98%, 76%, 1) 0px, transparent 50%),
+      radial-gradient(at 10% 29%, hsla(256, 96%, 68%, 1) 0px, transparent 50%),
+      radial-gradient(at 97% 96%, hsla(38, 60%, 74%, 1) 0px, transparent 50%),
+      radial-gradient(at 33% 50%, hsla(222, 67%, 73%, 1) 0px, transparent 50%),
+      radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 1) 0px, transparent 50%);
+    background-size: 100% 100%;
+    position: relative;
+    animation: grain 8s steps(10) infinite;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -100%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background-image: url('data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: -1;
+    animation: grain 8s steps(10) infinite;
   }
 }
