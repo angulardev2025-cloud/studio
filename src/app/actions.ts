@@ -109,7 +109,6 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
     const fourWeeksAgo = sub(new Date(), { weeks: 4 });
     let allVideoItems: any[] = [];
     let nextPageToken: string | undefined = undefined;
-    let shouldStop = false;
 
     do {
         try {
@@ -123,21 +122,27 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
             });
 
             if (playlistData.items) {
-              for (const item of playlistData.items) {
-                  if (item.snippet?.publishedAt) {
-                    const publishedAt = new Date(item.snippet.publishedAt);
-                    if (publishedAt < fourWeeksAgo) {
-                        shouldStop = true;
-                        break;
-                    }
-                    allVideoItems.push(item);
-                  }
-              }
+                allVideoItems.push(...playlistData.items);
             }
             
-            if (shouldStop) break;
+            // Check the date of the last item in the fetched batch to see if we should stop
+            if (playlistData.items && playlistData.items.length > 0) {
+                const lastItem = playlistData.items[playlistData.items.length - 1];
+                if (lastItem.snippet?.publishedAt) {
+                    const publishedAt = new Date(lastItem.snippet.publishedAt);
+                    if (publishedAt < fourWeeksAgo) {
+                        // We've gone past the 4-week mark, so we can stop paginating
+                        nextPageToken = undefined;
+                    } else {
+                        nextPageToken = playlistData.nextPageToken;
+                    }
+                } else {
+                     nextPageToken = playlistData.nextPageToken;
+                }
+            } else {
+                 nextPageToken = playlistData.nextPageToken;
+            }
 
-            nextPageToken = playlistData.nextPageToken;
         } catch (error) {
             console.error(`Error fetching playlist items for playlist ${playlistId}:`, error);
             // Stop paginating for this playlist if an error occurs
@@ -145,7 +150,14 @@ async function fetchVideosForPlaylist(playlistId: string, channelTitle: string, 
         }
     } while (nextPageToken);
 
-    return allVideoItems
+    // Filter out videos older than four weeks after collecting all relevant pages
+    const recentVideoItems = allVideoItems.filter(item => {
+        if (!item.snippet?.publishedAt) return false;
+        const publishedAt = new Date(item.snippet.publishedAt);
+        return publishedAt >= fourWeeksAgo;
+    });
+
+    return recentVideoItems
         .filter(item => item.snippet?.resourceId?.videoId)
         .map((item: any) => ({
             id: item.snippet.resourceId.videoId,
@@ -317,6 +329,8 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: existingOfflineData, error: `API Error: ${errorMessage}`, message: 'An error occurred. Displaying data from offline cache.', hits: hits.count };
   }
 }
+
+    
 
     
 
