@@ -42,4 +42,5 @@ export const channelUrls = [
   'https://youtube.com/@netflixindiaofficial',
   'https://youtube.com/@aiyyoshraddha',
   'https://youtube.com/@asiancricketcounciltv',
+  'https://youtube.com/@flyingpassport',
 ];
