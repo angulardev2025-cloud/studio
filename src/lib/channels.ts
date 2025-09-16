@@ -41,4 +41,5 @@ export const channelUrls = [
   'https://youtube.com/@fireship',
   'https://youtube.com/@theallrounderrs',
   'https://youtube.com/@netflixindiaofficial',
+  'https://youtube.com/@aiyyoshraddha',
 ];
