@@ -15,6 +15,7 @@ import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
 import VideoDeckCard, { SeenVideosList } from './video-deck-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Combobox } from './ui/combobox';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -146,7 +147,6 @@ function JsonViewer({ data }: { data: VideoData[] }) {
 export default function YoutubeFeed({ initialState: serverInitialState }: { initialState: FetcherState }) {
   const [state, setState] = useState<FetcherState>(serverInitialState);
   const [searchTerm, setSearchTerm] = useState('');
-  const [channelSearchTerm, setChannelSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
   const [hitCount, setHitCount] = useState(0);
@@ -156,8 +156,6 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   const [activeTab, setActiveTab] = useState('tosee');
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
   const [allVideos, setAllVideos] = useState<VideoData[]>([]);
-  const [showChannelSuggestions, setShowChannelSuggestions] = useState(false);
-  const channelSearchRef = useRef<HTMLDivElement>(null);
   const [placeholder, setPlaceholder] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
@@ -200,38 +198,34 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const channelNames = useMemo(() => {
+  const channelOptions = useMemo(() => {
     if (!allVideos) return [];
     const names = new Set(allVideos.map(video => video.uploader));
-    return ['All Channels', ...Array.from(names).sort()];
+    const sortedNames = Array.from(names).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    return [
+      { value: 'all', label: 'All Channels' },
+      ...sortedNames.map(name => ({ value: name, label: name }))
+    ];
   }, [allVideos]);
 
   useEffect(() => {
-    if (channelNames.length <= 1) return;
+    if (channelOptions.length <= 1) return;
+    const placeholderChannels = channelOptions.filter(c => c.value !== 'all');
+    if (placeholderChannels.length === 0) return;
     const interval = setInterval(() => {
-        setPlaceholderIndex(prevIndex => (prevIndex + 1) % (channelNames.length -1));
+        setPlaceholderIndex(prevIndex => (prevIndex + 1) % placeholderChannels.length);
     }, 2000);
     return () => clearInterval(interval);
-  }, [channelNames]);
+  }, [channelOptions]);
 
   useEffect(() => {
-    if (channelNames.length > 1) {
-        setPlaceholder(`Search for "${channelNames[placeholderIndex + 1]}"...`);
+    const placeholderChannels = channelOptions.filter(c => c.value !== 'all');
+    if (placeholderChannels.length > 0) {
+        setPlaceholder(`Search for "${placeholderChannels[placeholderIndex].label}"...`);
     } else {
         setPlaceholder('Search by channel...');
     }
-  }, [placeholderIndex, channelNames]);
-
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-        if (channelSearchRef.current && !channelSearchRef.current.contains(event.target as Node)) {
-            setShowChannelSuggestions(false);
-        }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [placeholderIndex, channelOptions]);
 
 
   const updateStateAfterFetch = (newState: FetcherState) => {
@@ -258,7 +252,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     if (!allVideos) return [];
 
     return allVideos.filter(video => {
-      const matchesChannel = selectedChannel === 'all' || video.uploader === selectedChannel;
+      const matchesChannel = selectedChannel === 'all' || video.uploader.toLowerCase() === selectedChannel.toLowerCase();
       const matchesSearch = searchTerm.trim() === '' || 
                             video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             video.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -341,24 +335,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
   const hasMore = visibleCount < (shuffledUnseenVideos?.length || 0);
   const totalChannels = channelUrls.length;
-
-  const channelSuggestions = useMemo(() => {
-    if (channelSearchTerm.length < 3) return [];
-    return channelNames.filter(name => name.toLowerCase().includes(channelSearchTerm.toLowerCase()));
-  }, [channelSearchTerm, channelNames]);
-
-  const handleChannelSelect = (channel: string) => {
-    setSelectedChannel(channel === 'All Channels' ? 'all' : channel);
-    setChannelSearchTerm(channel === 'All Channels' ? '' : channel);
-    setShowChannelSuggestions(false);
-  };
   
-  const handleClearChannelFilter = () => {
-      setSelectedChannel('all');
-      setChannelSearchTerm('');
-  };
-
-
   return (
     <>
       <div className="mb-6 flex flex-col gap-4">
@@ -445,45 +422,15 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
                 </Button>
               )}
             </div>
-            <div className="relative flex-grow md:max-w-xs" ref={channelSearchRef}>
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                    type="search"
-                    placeholder={placeholder}
-                    className="pl-10 w-full placeholder:animate-placeholder-fade-in"
-                    value={channelSearchTerm}
-                    onChange={(e) => {
-                        setChannelSearchTerm(e.target.value);
-                        setSelectedChannel('all');
-                        setShowChannelSuggestions(true);
-                    }}
-                    onFocus={() => setShowChannelSuggestions(true)}
+            <div className="relative flex-grow md:max-w-xs">
+                <Combobox
+                  options={channelOptions}
+                  value={selectedChannel}
+                  onChange={(value) => setSelectedChannel(value === 'all' ? 'all' : value)}
+                  placeholder="Select a channel..."
+                  searchPlaceholder={placeholder}
+                  noResultsMessage="No channel found."
                 />
-                 {channelSearchTerm && (
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                        onClick={handleClearChannelFilter}
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                 )}
-                {showChannelSuggestions && channelSuggestions.length > 0 && (
-                    <Card className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto">
-                        <CardContent className="p-2">
-                            {channelSuggestions.map(channel => (
-                                <div
-                                    key={channel}
-                                    onClick={() => handleChannelSelect(channel)}
-                                    className="p-2 hover:bg-accent rounded-md cursor-pointer text-sm"
-                                >
-                                    {channel}
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                )}
             </div>
             <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                 <Button
