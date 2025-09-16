@@ -160,7 +160,6 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   const [allVideos, setAllVideos] = useState<VideoData[]>([]);
   
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const getISTDateString = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -340,8 +339,11 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
                     <span>API Hits: <AnimatedCounter value={hitCount} /> / 10000</span>
                 </div>
                 <span>|</span>
-                <div>
-                {allVideos && `Found ${allVideos.length} videos from ${totalChannels} channels.`}
+                 <div className="flex items-center gap-2" title="Total videos found and channels configured">
+                    <Film className="h-4 w-4" />
+                    <span>
+                    {allVideos ? `${allVideos.length} videos from ${totalChannels} channels` : 'Loading...'}
+                    </span>
                 </div>
             </div>
         </div>
