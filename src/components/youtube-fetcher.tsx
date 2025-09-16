@@ -13,10 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
 import { channelUrls } from '@/lib/channels';
 import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import VideoDeckCard, { SeenVideosList } from './video-deck-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -148,6 +146,7 @@ function JsonViewer({ data }: { data: VideoData[] }) {
 export default function YoutubeFeed({ initialState: serverInitialState }: { initialState: FetcherState }) {
   const [state, setState] = useState<FetcherState>(serverInitialState);
   const [searchTerm, setSearchTerm] = useState('');
+  const [channelSearchTerm, setChannelSearchTerm] = useState('');
   const [selectedChannel, setSelectedChannel] = useState('all');
   const [visibleCount, setVisibleCount] = useState(INITIAL_LOAD_COUNT);
   const [hitCount, setHitCount] = useState(0);
@@ -155,12 +154,13 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
   const [isPending, startTransition] = useTransition();
   const [loadingAction, setLoadingAction] = useState<'online' | 'offline' | null>(null);
   const [activeTab, setActiveTab] = useState('tosee');
-
   const [readVideoIds, setReadVideoIds] = useState<Set<string>>(new Set());
   const [allVideos, setAllVideos] = useState<VideoData[]>([]);
+  const [showChannelSuggestions, setShowChannelSuggestions] = useState(false);
+  const channelSearchRef = useRef<HTMLDivElement>(null);
+  const [placeholder, setPlaceholder] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   
-  const router = useRouter();
-
   const getISTDateString = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   };
@@ -185,7 +185,6 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
       const storedReadIds: string[] = JSON.parse(localStorage.getItem(READ_VIDEOS_KEY) || '[]');
       setReadVideoIds(new Set(storedReadIds));
       
-      // On initial load, if there's no server data, try to load offline data.
       if (!serverInitialState.data || serverInitialState.data.length === 0) {
         loadFeed({ offline: true });
       } else {
@@ -200,6 +199,40 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const channelNames = useMemo(() => {
+    if (!allVideos) return [];
+    const names = new Set(allVideos.map(video => video.uploader));
+    return ['All Channels', ...Array.from(names).sort()];
+  }, [allVideos]);
+
+  useEffect(() => {
+    if (channelNames.length <= 1) return;
+    const interval = setInterval(() => {
+        setPlaceholderIndex(prevIndex => (prevIndex + 1) % (channelNames.length -1));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [channelNames]);
+
+  useEffect(() => {
+    if (channelNames.length > 1) {
+        setPlaceholder(`Search for "${channelNames[placeholderIndex + 1]}"...`);
+    } else {
+        setPlaceholder('Search by channel...');
+    }
+  }, [placeholderIndex, channelNames]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (channelSearchRef.current && !channelSearchRef.current.contains(event.target as Node)) {
+            setShowChannelSuggestions(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
 
   const updateStateAfterFetch = (newState: FetcherState) => {
     setState(newState);
@@ -298,12 +331,6 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     window.location.reload();
   };
 
-  const channelNames = useMemo(() => {
-    if (!allVideos) return [];
-    const names = new Set(allVideos.map(video => video.uploader));
-    return ['all', ...Array.from(names).sort()];
-  }, [allVideos]);
-
   const visibleUnseenVideos = useMemo(() => {
     return shuffledUnseenVideos.slice(0, visibleCount);
   }, [shuffledUnseenVideos, visibleCount]);
@@ -314,6 +341,23 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
 
   const hasMore = visibleCount < (shuffledUnseenVideos?.length || 0);
   const totalChannels = channelUrls.length;
+
+  const channelSuggestions = useMemo(() => {
+    if (channelSearchTerm.length < 3) return [];
+    return channelNames.filter(name => name.toLowerCase().includes(channelSearchTerm.toLowerCase()));
+  }, [channelSearchTerm, channelNames]);
+
+  const handleChannelSelect = (channel: string) => {
+    setSelectedChannel(channel === 'All Channels' ? 'all' : channel);
+    setChannelSearchTerm(channel === 'All Channels' ? '' : channel);
+    setShowChannelSuggestions(false);
+  };
+  
+  const handleClearChannelFilter = () => {
+      setSelectedChannel('all');
+      setChannelSearchTerm('');
+  };
+
 
   return (
     <>
@@ -401,18 +445,46 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
                 </Button>
               )}
             </div>
-            <Select value={selectedChannel} onValueChange={setSelectedChannel} disabled={!allVideos || allVideos.length === 0}>
-              <SelectTrigger className="w-full md:w-[280px]">
-                <SelectValue placeholder="Filter by channel" />
-              </SelectTrigger>
-              <SelectContent>
-                {channelNames.map(channel => (
-                  <SelectItem key={channel} value={channel}>
-                    {channel === 'all' ? 'All Channels' : channel}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative flex-grow md:max-w-xs" ref={channelSearchRef}>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder={placeholder}
+                    className="pl-10 w-full placeholder:animate-placeholder-fade-in"
+                    value={channelSearchTerm}
+                    onChange={(e) => {
+                        setChannelSearchTerm(e.target.value);
+                        setSelectedChannel('all');
+                        setShowChannelSuggestions(true);
+                    }}
+                    onFocus={() => setShowChannelSuggestions(true)}
+                />
+                 {channelSearchTerm && (
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        onClick={handleClearChannelFilter}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                 )}
+                {showChannelSuggestions && channelSuggestions.length > 0 && (
+                    <Card className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto">
+                        <CardContent className="p-2">
+                            {channelSuggestions.map(channel => (
+                                <div
+                                    key={channel}
+                                    onClick={() => handleChannelSelect(channel)}
+                                    className="p-2 hover:bg-accent rounded-md cursor-pointer text-sm"
+                                >
+                                    {channel}
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
             <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                 <Button
                     variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
