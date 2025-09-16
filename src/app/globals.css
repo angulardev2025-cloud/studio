@@ -4,55 +4,74 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 220 40% 98%; /* Very Light Lavender - Light Mode */
+    --foreground: 271 100% 10%; /* Dark Indigo for text - Light Mode */
+
+    --card: 220 40% 98%;
+    --card-foreground: 271 100% 10%;
+
+    --popover: 220 40% 98%;
+    --popover-foreground: 271 100% 10%;
+
+    --primary: 271 100% 26%; /* Deep Indigo */
+    --primary-foreground: 175 68% 80%; /* Light Turquoise for text on primary */
+
+    --secondary: 271 100% 90%; /* Lighter Indigo */
+    --secondary-foreground: 271 100% 26%;
+
+    --muted: 220 20% 94%;
+    --muted-foreground: 271 50% 40%;
+
+    --accent: 175 72% 51%; /* Bright Turquoise */
+    --accent-foreground: 271 100% 10%;
+
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+
+    --border: 271 100% 85%;
+    --input: 271 100% 90%;
+    --ring: 271 100% 26%;
+
     --radius: 0.5rem;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
+
+    --chart-1: 271 100% 26%;
+    --chart-2: 175 72% 51%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 228 10% 9%; /* Very Dark Lavender for Dark Mode */
+    --foreground: 220 40% 98%; /* Light Lavender for text */
+
+    --card: 228 10% 12%;
+    --card-foreground: 220 40% 98%;
+
+    --popover: 228 10% 9%;
+    --popover-foreground: 220 40% 98%;
+
+    --primary: 271 100% 74%; /* Deep Indigo - Lighter for Dark Mode */
+    --primary-foreground: 271 100% 10%;
+
+    --secondary: 271 100% 15%;
+    --secondary-foreground: 220 40% 98%;
+
+    --muted: 271 100% 15%;
+    --muted-foreground: 220 20% 65%;
+
+    --accent: 175 72% 51%; /* Bright Turquoise - Stays bright */
+    --accent-foreground: 228 10% 9%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
+    
+    --border: 271 100% 20%;
+    --input: 271 100% 20%;
+    --ring: 271 100% 74%;
+    
+    --chart-1: 271 100% 74%;
+    --chart-2: 175 72% 51%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
@@ -65,32 +84,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    min-height: 100vh;
-    background-color: #111;
-    background-image:
-      radial-gradient(at 27% 37%, hsla(215, 98%, 61%, 1) 0px, transparent 50%),
-      radial-gradient(at 97% 21%, hsla(125, 98%, 72%, 1) 0px, transparent 50%),
-      radial-gradient(at 52% 99%, hsla(355, 98%, 76%, 1) 0px, transparent 50%),
-      radial-gradient(at 10% 29%, hsla(256, 96%, 68%, 1) 0px, transparent 50%),
-      radial-gradient(at 97% 96%, hsla(38, 60%, 74%, 1) 0px, transparent 50%),
-      radial-gradient(at 33% 50%, hsla(222, 67%, 73%, 1) 0px, transparent 50%),
-      radial-gradient(at 79% 53%, hsla(343, 68%, 79%, 1) 0px, transparent 50%);
-    background-size: 150% 150%;
-    position: relative;
-    @apply animate-move-gradient;
   }
-
-  body::after {
-    content: '';
-    position: fixed;
-    top: -100%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background-image: url('data:image/svg+xml, <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)"/></svg>');
-    opacity: 0.15;
-    pointer-events: none;
-    z-index: -1;
-    animation: grain 8s steps(10) infinite;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
   }
 }
