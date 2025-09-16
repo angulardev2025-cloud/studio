@@ -39,4 +39,5 @@ export const channelUrls = [
   'https://youtube.com/@techwiser',
   'https://youtube.com/@nickbradley',
   'https://youtube.com/@fireship',
+  'https://youtube.com/@theallrounderrs',
 ];
