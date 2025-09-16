@@ -13,7 +13,6 @@ export const channelUrls = [
   'https://www.youtube.com/channel/UCb-xXZ7ltTvrh9C6DgB9H-Q', // Prasad Tech in Telugu
   'https://www.youtube.com/channel/UC1tVU8H153ZFO9eRsxdJlhA', // Technology Gyan
   'https://www.youtube.com/c/DrBro',
-  'https://www.youtube.com/c/GaneshKaranth',
   'https://www.youtube.com/c/DrJagdishChatur',
   'https://www.youtube.com/c/VismayaKannadaVK',
   'https://www.youtube.com/c/KannadaDolu',
