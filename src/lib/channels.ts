@@ -36,4 +36,7 @@ export const channelUrls = [
   'https://youtube.com/@rajshamani',
   'https://youtube.com/@trakintech',
   'https://youtube.com/@primevideoin',
+  'https://youtube.com/@techwiser',
+  'https://youtube.com/@nickbradley',
+  'https://youtube.com/@fireship',
 ];
