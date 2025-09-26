@@ -8,9 +8,7 @@ export const channelUrls = [
   'https://www.youtube.com/@TechBurner',
   'https://www.youtube.com/c/TrakinTechEnglish',
   'https://www.youtube.com/c/TechBar',
-  'https://www.youtube.com/beebomco',
-  'https://www.youtube.com/channel/UCmJlSkSkgdXama3GSUgMC4g', // Trakin Tech Tamil Official
-  'https://www.youtube.com/channel/UCb-xXZ7ltTvrh9C6DgB9H-Q', // Prasad Tech in Telugu
+  'https://www.youtube.com/beebomco', // Prasad Tech in Telugu
   'https://www.youtube.com/channel/UC1tVU8H153ZFO9eRsxdJlhA', // Technology Gyan
   'https://www.youtube.com/c/DrBro',
   'https://www.youtube.com/c/DrJagdishChatur',
