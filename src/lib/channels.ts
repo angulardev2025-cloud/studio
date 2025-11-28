@@ -42,4 +42,5 @@ export const channelUrls = [
   'https://youtube.com/@flyingpassport',
   'https://www.youtube.com/@in28minutes',
   'https://www.youtube.com/@Telusko',
+  'https://www.youtube.com/@LearningPartnerDigital',
 ];
