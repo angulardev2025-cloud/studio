@@ -43,4 +43,5 @@ export const channelUrls = [
   'https://www.youtube.com/@in28minutes',
   'https://www.youtube.com/@Telusko',
   'https://www.youtube.com/@LearningPartnerDigital',
+  'https://www.youtube.com/@theigorsedov',
 ];
