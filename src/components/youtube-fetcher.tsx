@@ -2,8 +2,8 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback, useTransition, useRef } from 'react';
-import type { FetcherState, VideoData } from '@/lib/types';
-import { fetchYouTubeFeed } from '@/app/actions';
+import type { FetcherState, VideoData, ChannelData } from '@/lib/types';
+import { fetchYouTubeFeed, fetchChannelDetails } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Combobox } from './ui/combobox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
+import Image from 'next/image';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -147,19 +148,25 @@ function JsonViewer({ data }: { data: VideoData[] }) {
 
 function ChannelListDialog() {
     const { toast } = useToast();
-  
-    const getChannelNameFromUrl = (url: string) => {
-      try {
-        const path = new URL(url).pathname;
-        const parts = path.split('/').filter(p => p);
-        if (parts.length > 0) {
-          const lastPart = parts[parts.length - 1];
-          return lastPart.startsWith('@') ? lastPart : lastPart;
+    const [channels, setChannels] = useState<ChannelData[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleOpen = async (open: boolean) => {
+        if (open && channels.length === 0) {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const { channels: fetchedChannels } = await fetchChannelDetails();
+                setChannels(fetchedChannels);
+            } catch (e) {
+                const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred.';
+                setError(errorMessage);
+                toast({ title: 'Error fetching channel details', description: errorMessage, variant: 'destructive' });
+            } finally {
+                setIsLoading(false);
+            }
         }
-        return url;
-      } catch (e) {
-        return url;
-      }
     };
   
     const handleCopy = (url: string) => {
@@ -172,7 +179,7 @@ function ChannelListDialog() {
     };
   
     return (
-      <Dialog>
+      <Dialog onOpenChange={handleOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">
             <List />
@@ -187,14 +194,29 @@ function ChannelListDialog() {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[60vh] pr-4">
-            <div className="grid gap-4 py-4">
-              {channelUrls.map((url, index) => (
-                <div key={index} className="flex items-center justify-between gap-4 p-3 rounded-lg border bg-card">
-                  <div className="flex-1 overflow-hidden">
-                    <p className="font-semibold text-sm truncate">{getChannelNameFromUrl(url)}</p>
-                    <p className="text-xs text-muted-foreground truncate">{url}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleCopy(url)}>
+            <div className="grid gap-2 py-4">
+              {isLoading && (
+                 [...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-3 rounded-lg border">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                           <Skeleton className="h-4 w-3/4" />
+                           <Skeleton className="h-3 w-full" />
+                        </div>
+                    </div>
+                ))
+              )}
+              {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+              {!isLoading && !error && channels.map((channel, index) => (
+                <div key={index} className="flex items-center justify-between gap-4 p-3 rounded-lg border bg-card/50">
+                   <div className="flex items-center gap-4 flex-1 overflow-hidden">
+                     <Image src={channel.thumbnailUrl} alt={channel.title} width={48} height={48} className="rounded-full" />
+                     <div className="flex-1 overflow-hidden">
+                      <p className="font-semibold text-sm truncate">{channel.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{channel.url}</p>
+                     </div>
+                   </div>
+                  <Button variant="ghost" size="icon" onClick={() => handleCopy(channel.url)}>
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>

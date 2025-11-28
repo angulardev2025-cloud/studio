@@ -3,7 +3,7 @@
 
 import { sub } from 'date-fns';
 import { channelUrls } from '@/lib/channels';
-import type { FetcherState, VideoData } from '@/lib/types';
+import type { FetcherState, VideoData, ChannelData } from '@/lib/types';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -12,8 +12,15 @@ const OFFLINE_DATA_PATH = path.join(process.cwd(), 'src', 'data', 'youtube-feed.
 const CHANNEL_CACHE_PATH = path.join(process.cwd(), 'src', 'data', 'channel-cache.json');
 
 // --- Channel Cache Helpers ---
+type ChannelCacheEntry = { 
+  channelId: string;
+  type: 'handle' | 'username' | 'id';
+  title?: string;
+  thumbnailUrl?: string;
+};
+
 type ChannelCache = {
-  [key: string]: { channelId: string, type: 'handle' | 'username' }
+  [key: string]: ChannelCacheEntry;
 };
 
 async function readChannelCache(): Promise<ChannelCache> {
@@ -222,10 +229,11 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     channelUrls.forEach(url => {
         const identifier = getChannelIdentifier(url);
         if (identifier) {
-            if (identifier.type === 'id') {
+            const cacheKey = identifier.id;
+            if (channelCache[cacheKey]) {
+                idsToFetch.add(channelCache[cacheKey].channelId);
+            } else if (identifier.type === 'id') {
                 idsToFetch.add(identifier.id);
-            } else if (channelCache[identifier.id]) {
-                idsToFetch.add(channelCache[identifier.id].channelId);
             } else if (identifier.type === 'username') {
                 usernamesToFetch.add(identifier.id);
             } else if (identifier.type === 'handle') {
@@ -336,3 +344,114 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
     return { data: existingOfflineData, error: `API Error: ${errorMessage}`, message: 'An error occurred. Displaying data from offline cache.', hits: hits.count };
   }
 }
+
+
+export async function fetchChannelDetails(): Promise<{ channels: ChannelData[] }> {
+    const apiKey = process.env.YT_API_KEY;
+    if (!apiKey) {
+      throw new Error('YouTube API key (YT_API_KEY) is not configured.');
+    }
+  
+    const channelCache = await readChannelCache();
+    let cacheNeedsUpdate = false;
+    const hits = { count: 0 };
+  
+    // Identify channels that need fetching
+    const channelsToFetchDetailsFor = new Set<string>();
+    const identifiers = channelUrls.map(getChannelIdentifier).filter(Boolean) as { id: string; type: 'id' | 'handle' | 'username' }[];
+  
+    for (const identifier of identifiers) {
+      const cacheKey = identifier.id;
+      if (!channelCache[cacheKey] || !channelCache[cacheKey].thumbnailUrl || !channelCache[cacheKey].title) {
+        if (identifier.type === 'id') {
+          channelsToFetchDetailsFor.add(identifier.id);
+        } else {
+            // This will be resolved later if not in cache
+            channelsToFetchDetailsFor.add(cacheKey);
+        }
+      }
+    }
+  
+    // Resolve handles/usernames to IDs if needed
+    const resolvedIds = new Set<string>();
+    for (const key of channelsToFetchDetailsFor) {
+      if (channelCache[key]) {
+        resolvedIds.add(channelCache[key].channelId);
+      } else {
+        const identifier = getChannelIdentifier(channelUrls.find(url => url.includes(key)) || '');
+        if (!identifier) continue;
+  
+        let channelId: string | null = null;
+        if (identifier.type === 'id') {
+            channelId = identifier.id;
+        } else if (identifier.type === 'username') {
+          hits.count++;
+          const data = await fetchApi('channels', { part: 'id', forUsername: identifier.id, key: apiKey });
+          channelId = data.items?.[0]?.id;
+        } else if (identifier.type === 'handle') {
+          hits.count++;
+          const data = await fetchApi('search', { part: 'id', q: `@${identifier.id}`, type: 'channel', key: apiKey });
+          channelId = data.items?.[0]?.id.channelId;
+        }
+  
+        if (channelId) {
+          resolvedIds.add(channelId);
+          channelCache[key] = { ...(channelCache[key] || {type: identifier.type}), channelId };
+          cacheNeedsUpdate = true;
+        }
+      }
+    }
+  
+    // Batch fetch details for all required IDs
+    const idArray = Array.from(resolvedIds);
+    if (idArray.length > 0) {
+        const idChunks = [];
+        for (let i = 0; i < idArray.length; i += 50) {
+            idChunks.push(idArray.slice(i, i + 50));
+        }
+
+        for (const chunk of idChunks) {
+            hits.count++;
+            const data = await fetchApi('channels', { part: 'snippet', id: chunk.join(','), key: apiKey });
+            if (data.items) {
+                data.items.forEach((item: any) => {
+                    const originalKey = Object.keys(channelCache).find(key => channelCache[key].channelId === item.id) || item.id;
+                    channelCache[originalKey] = {
+                        ...channelCache[originalKey],
+                        channelId: item.id,
+                        title: item.snippet.title,
+                        thumbnailUrl: item.snippet.thumbnails.default.url
+                    };
+                    cacheNeedsUpdate = true;
+                });
+            }
+        }
+    }
+  
+    if (cacheNeedsUpdate) {
+      await writeChannelCache(channelCache);
+    }
+  
+    // Construct the final list from URLs and cache
+    const detailedChannels: ChannelData[] = channelUrls.map(url => {
+      const identifier = getChannelIdentifier(url);
+      const cacheKey = identifier?.id || '';
+      const cacheEntry = channelCache[cacheKey];
+      
+      const getTitleFromUrl = (url:string) => {
+        try {
+            const path = new URL(url).pathname;
+            const parts = path.split('/').filter(p => p);
+            return parts.length > 0 ? (parts[parts.length - 1].startsWith('@') ? parts[parts.length - 1] : parts[parts.length-1]) : url;
+        } catch { return url; }
+      }
+  
+      return {
+        url,
+        title: cacheEntry?.title || getTitleFromUrl(url),
+        thumbnailUrl: cacheEntry?.thumbnailUrl || 'https://placehold.co/88x88/cccccc/333333?text=?',
+      };
+    }).sort((a,b) => a.title.localeCompare(b.title));
+  
+    return { channels: detailedChannels };
+  }

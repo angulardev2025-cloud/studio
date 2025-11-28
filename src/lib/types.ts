@@ -9,6 +9,12 @@ export type VideoData = {
   shareLink: string;
 };
 
+export type ChannelData = {
+  url: string;
+  title: string;
+  thumbnailUrl: string;
+};
+
 export type FetcherState = {
   data: VideoData[] | null;
   error: string | null;
@@ -17,4 +23,3 @@ export type FetcherState = {
 };
 
     
-
