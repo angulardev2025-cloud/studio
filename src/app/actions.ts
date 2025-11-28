@@ -8,8 +8,8 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
-const OFFLINE_DATA_PATH = path.join(process.cwd(), 'src', 'data', 'youtube-feed.json');
-const CHANNEL_CACHE_PATH = path.join(process.cwd(), 'src', 'data', 'channel-cache.json');
+const OFFLINE_DATA_PATH = path.join(process.cwd(), '.data', 'youtube-feed.json');
+const CHANNEL_CACHE_PATH = path.join(process.cwd(), '.data', 'channel-cache.json');
 
 // --- Channel Cache Helpers ---
 type ChannelCacheEntry = { 
