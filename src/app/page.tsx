@@ -33,7 +33,7 @@ export default async function Home() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
            <h1 className="text-2xl font-bold tracking-tight">YTSHORTS</h1>
-           <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">v3</span>
+           <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">v1.0</span>
         </div>
       </div>
       <Suspense fallback={<LoadingState />}>
