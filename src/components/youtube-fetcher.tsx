@@ -7,7 +7,7 @@ import { fetchYouTubeFeed } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import VideoCard from './video-card';
 import { Skeleton } from './ui/skeleton';
-import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff, CloudCog, Shuffle } from 'lucide-react';
+import { AlertCircle, Copy, Download, Film, Loader2, RefreshCw, Youtube, Search, X, Server, LayoutGrid, List, WifiOff, CloudCog, Shuffle, Link as LinkIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from './ui/card';
@@ -16,6 +16,8 @@ import { Input } from './ui/input';
 import VideoDeckCard, { SeenVideosList } from './video-deck-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Combobox } from './ui/combobox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { ScrollArea } from './ui/scroll-area';
 
 const INITIAL_LOAD_COUNT = 12;
 const LOAD_MORE_COUNT = 8;
@@ -142,6 +144,67 @@ function JsonViewer({ data }: { data: VideoData[] }) {
     </div>
   );
 }
+
+function ChannelListDialog() {
+    const { toast } = useToast();
+  
+    const getChannelNameFromUrl = (url: string) => {
+      try {
+        const path = new URL(url).pathname;
+        const parts = path.split('/').filter(p => p);
+        if (parts.length > 0) {
+          const lastPart = parts[parts.length - 1];
+          return lastPart.startsWith('@') ? lastPart : lastPart;
+        }
+        return url;
+      } catch (e) {
+        return url;
+      }
+    };
+  
+    const handleCopy = (url: string) => {
+      navigator.clipboard.writeText(url).then(() => {
+        toast({
+          title: 'Copied!',
+          description: 'Channel link copied to clipboard.',
+        });
+      });
+    };
+  
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="outline">
+            <List />
+            Show Channels
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Channel List</DialogTitle>
+            <DialogDescription>
+              Here are all the channels configured in your feed.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh] pr-4">
+            <div className="grid gap-4 py-4">
+              {channelUrls.map((url, index) => (
+                <div key={index} className="flex items-center justify-between gap-4 p-3 rounded-lg border bg-card">
+                  <div className="flex-1 overflow-hidden">
+                    <p className="font-semibold text-sm truncate">{getChannelNameFromUrl(url)}</p>
+                    <p className="text-xs text-muted-foreground truncate">{url}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => handleCopy(url)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
 
 export default function YoutubeFeed({ initialState: serverInitialState }: { initialState: FetcherState }) {
@@ -353,6 +416,7 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
                     <CloudCog />
                     Load Latest App
                 </Button>
+                <ChannelListDialog />
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2" title="Total API Hits Today (IST) - Resets Daily">
@@ -523,3 +587,6 @@ export default function YoutubeFeed({ initialState: serverInitialState }: { init
     </>
   );
 }
+
+
+    
