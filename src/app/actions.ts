@@ -326,7 +326,17 @@ export async function fetchYouTubeFeed({ offline = false }: { offline?: boolean 
       uniqueVideosMap.set(video.id, video);
     });
     const allUniqueVideos = Array.from(uniqueVideosMap.values());
-    allUniqueVideos.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+    allUniqueVideos.sort((a, b) => {
+      const aIsTechy = a.uploader === 'Techy_Kannada ';
+      const bIsTechy = b.uploader === 'Techy_Kannada ';
+      if (aIsTechy && !bIsTechy) {
+        return -1;
+      }
+      if (!aIsTechy && bIsTechy) {
+        return 1;
+      }
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+    });
 
     await writeOfflineData(allUniqueVideos);
 
