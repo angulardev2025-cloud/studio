@@ -1,3 +1,4 @@
+'use client';
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -5,6 +6,8 @@ import { ThemeProviderV2 } from '@/components/theme-provider';
 import { Inter, Space_Grotesk } from 'next/font/google';
 import Link from 'next/link';
 import ScrollToTopButton from '@/components/scroll-to-top';
+import { useEffect, useState } from 'react';
+import SplashScreen from '@/components/SplashScreen';
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -15,16 +18,20 @@ const spaceGrotesk = Space_Grotesk({
   variable: '--font-space-grotesk',
 })
 
-export const metadata: Metadata = {
-  title: 'YTSHORTS',
-  description: 'The latest videos from your favorite YouTube channels.',
-};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+  }, []);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
@@ -34,7 +41,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          {loading ? <SplashScreen /> : children}
           <ScrollToTopButton />
           <Toaster />
         </ThemeProviderV2>
