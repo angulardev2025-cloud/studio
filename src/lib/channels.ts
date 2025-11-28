@@ -2,10 +2,11 @@
 // The app will automatically fetch the latest videos from these channels.
 // The first channel in the list is prioritized in the feed.
 export const channelUrls = [
-  'https://www.youtube.com/@KannadaTechForYou',
   'https://www.youtube.com/@techinkannada360',
+  'https://www.youtube.com/@KannadaTechForYou',
   'https://www.youtube.com/c/TechnicalGuruji',
   'https://www.youtube.com/@TechBurner',
+  'https://www.youtube.com/@ByteByteGo',
   'https://www.youtube.com/c/TrakinTechEnglish',
   'https://www.youtube.com/c/TechBar',
   'https://www.youtube.com/beebomco', // Prasad Tech in Telugu
@@ -46,4 +47,5 @@ export const channelUrls = [
   'https://www.youtube.com/@theigorsedov',
   'https://www.youtube.com/@Sanjay_Kathuria',
   'https://www.youtube.com/@EngineeringDigest',
+  'https://www.youtube.com/@ApnaCollegeOfficial'
 ];
