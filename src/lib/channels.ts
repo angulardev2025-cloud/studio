@@ -40,4 +40,5 @@ export const channelUrls = [
   'https://youtube.com/@netflixindiaofficial',
   'https://youtube.com/@aiyyoshraddha',
   'https://youtube.com/@flyingpassport',
+  'https://www.youtube.com/@in28minutes',
 ];
