@@ -16,8 +16,8 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'Kannada Tech Data',
-  description: 'The latest videos from your favorite tech channels.',
+  title: 'YTSHORTS',
+  description: 'The latest videos from your favorite YouTube channels.',
 };
 
 export default function RootLayout({

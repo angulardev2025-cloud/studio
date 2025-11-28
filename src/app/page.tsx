@@ -32,7 +32,7 @@ export default async function Home() {
     <main className="container mx-auto p-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-           <h1 className="text-2xl font-bold tracking-tight">Kannada Tech Data</h1>
+           <h1 className="text-2xl font-bold tracking-tight">YTSHORTS</h1>
            <span className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">v3</span>
         </div>
       </div>
